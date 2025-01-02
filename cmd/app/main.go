@@ -399,14 +399,14 @@ func (a *App) solve() error {
 		additionalLines := ""
 
 		fmt.Printf("Statistics:\n")
-		fmt.Printf("Initial factor time = %.2f seconds\n", initialFactorTime)
-		fmt.Printf("Partition time = %.2f seconds\n", partitionTime)
+		fmt.Printf("Initial factor time = %.2f.\n", initialFactorTime)
+		fmt.Printf("Partition time = %.2f.\n", partitionTime)
 		if a.iterations > 0 {
-			fmt.Printf("Build time = %.3f seconds\n", a.buildTime/float64(a.iterations))
-			fmt.Printf("Factor time = %.3f seconds\n", a.factorTime/float64(a.iterations))
-			fmt.Printf("Solve time = %.3f seconds\n", a.solveTime/float64(a.iterations))
+			fmt.Printf("Build time = %.3f.\n", a.buildTime/float64(a.iterations))
+			fmt.Printf("Factor time = %.3f.\n", a.factorTime/float64(a.iterations))
+			fmt.Printf("Solve time = %.3f.\n", a.solveTime/float64(a.iterations))
 			if a.matrix.Config.Condition {
-				fmt.Printf("Condition time = %.3f seconds\n", conditionTime/float64(a.iterations))
+				fmt.Printf("Condition time = %.3f.\n", conditionTime/float64(a.iterations))
 			}
 		}
 
@@ -426,7 +426,7 @@ func (a *App) solve() error {
 			additionalLines += fmt.Sprintf("PseudoCondition = %.2g\n", a.psudoCondition)
 		}
 		if a.matrix.Config.Determinant {
-			fmt.Printf("Determinant time = %.2f seconds\n", a.detTime)
+			fmt.Printf("Determinant time = %.2f.\n", a.detTime)
 			if det != 0.0 && a.detExponent != 0 {
 				additionalLines += fmt.Sprintf("Determinant = %.3ge%d\n", det, a.detExponent)
 			} else {
@@ -452,7 +452,7 @@ func (t *App) printResourceUsage() {
 	runtime.ReadMemStats(&m)
 
 	fmt.Printf("\nAggregate resource usage:\n")
-	fmt.Printf("    Time required = %.4f seconds\n", time.Since(t.startTime).Seconds())
+	fmt.Printf("    Time required = %.4f.\n", time.Since(t.startTime).Seconds())
 	fmt.Printf("    Heap memory used = %d kBytes\n", m.HeapAlloc/1024)
 	fmt.Printf("    Total memory from OS = %d kBytes\n\n", m.Sys/1024)
 }
