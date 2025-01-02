@@ -63,6 +63,7 @@ func main() {
 	sb[5] = 0.0 // node2 imag
 
 	/* Perform AC analysis over a range of frequencies. */
+	// for f := 0.0; f <= 100000.0; f += 1000.0 {
 	for f := 0.0; f <= 2000.0; f += 1000.0 {
 		omega := 2.0 * math.Pi * f
 

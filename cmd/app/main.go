@@ -130,7 +130,7 @@ func (a *App) readMatrixFromFile(filename string) error {
 		}
 	}
 
-	// RHS_Col 설정
+	// RHS_Col
 	rhsCol := int64(1)
 	if a.useColumnAsRHS {
 		rhsCol = min(a.matrix.Size, a.columnAsRHS)
