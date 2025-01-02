@@ -2,6 +2,8 @@ package sparse
 
 import (
 	"math"
+
+	"golang.org/x/exp/constraints"
 )
 
 func (m *Matrix) ElementCount() int {
@@ -76,4 +78,11 @@ func (t *Template) AddImagQuad(imag float64) {
 func (t *Template) AddComplexQuad(real, imag float64) {
 	t.AddRealQuad(real)
 	t.AddImagQuad(imag)
+}
+
+func min[T constraints.Ordered](a, b T) T {
+	if a < b {
+		return a
+	}
+	return b
 }

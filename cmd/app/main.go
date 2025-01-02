@@ -20,23 +20,24 @@ var (
 )
 
 type App struct {
-	matrix       *sparse.Matrix
-	filename     string
-	description  string
-	solutionOnly bool
-	printLimit   int
-	relThreshold float64
-	absThreshold float64
-	iterations   int
-	columnAsRHS  bool
-	rhs          []float64
-	irhs         []float64
-	solution     []float64
-	isolution    []float64
-	buildTime    float64
-	factorTime   float64
-	solveTime    float64
-	startTime    time.Time
+	matrix         *sparse.Matrix
+	filename       string
+	description    string
+	solutionOnly   bool
+	printLimit     int
+	relThreshold   float64
+	absThreshold   float64
+	iterations     int
+	useColumnAsRHS bool
+	columnAsRHS    int64
+	rhs            []float64
+	irhs           []float64
+	solution       []float64
+	isolution      []float64
+	buildTime      float64
+	factorTime     float64
+	solveTime      float64
+	startTime      time.Time
 }
 
 func InitApp() *App {
@@ -47,7 +48,7 @@ func InitApp() *App {
 	}
 }
 
-func (t *App) readMatrixFromFile(filename string) error {
+func (a *App) readMatrixFromFile(filename string) error {
 	file, err := os.Open(filename)
 	if err != nil {
 		return fmt.Errorf("error opening file: %v", err)
@@ -64,17 +65,17 @@ func (t *App) readMatrixFromFile(filename string) error {
 
 	if strings.HasPrefix(line, "Starting") {
 		if strings.HasPrefix(line, "Starting complex") {
-			t.matrix.Complex = true
+			a.matrix.Complex = true
 		}
 		if !scanner.Scan() {
 			return fmt.Errorf("missing description")
 		}
 	}
-	t.description = strings.TrimSpace(scanner.Text())
+	a.description = strings.TrimSpace(scanner.Text())
 
 	// Print description at 1st line of matrix
-	if !t.solutionOnly {
-		fmt.Printf("\n%s\n\n", t.description)
+	if !a.solutionOnly {
+		fmt.Printf("\n%s\n\n", a.description)
 	}
 	lineNumber++
 
@@ -83,7 +84,7 @@ func (t *App) readMatrixFromFile(filename string) error {
 	}
 	line = scanner.Text()
 	if len(strings.TrimSpace(line)) == 0 {
-		return fmt.Errorf("syntax error in file '%s' at line %d", t.filename, lineNumber)
+		return fmt.Errorf("syntax error in file '%s' at line %d", a.filename, lineNumber)
 	}
 
 	fields := strings.Fields(line)
@@ -113,20 +114,26 @@ func (t *App) readMatrixFromFile(filename string) error {
 		Annotate:                annotate,
 	}
 
-	t.matrix, err = sparse.Create(size, config)
+	a.matrix, err = sparse.Create(size, config)
 	if err != nil {
 		return fmt.Errorf("failed to create matrix: %v", err)
 	}
 
-	t.matrix.Clear()
+	a.matrix.Clear()
 
-	t.rhs = make([]float64, size+1)
+	a.rhs = make([]float64, size+1)
 	if isComplex {
 		if config.SeparatedComplexVectors {
-			t.irhs = make([]float64, size+1)
+			a.irhs = make([]float64, size+1)
 		} else {
-			t.rhs = make([]float64, 2*(size+1))
+			a.rhs = make([]float64, 2*(size+1))
 		}
+	}
+
+	// RHS_Col 설정
+	rhsCol := int64(1)
+	if a.useColumnAsRHS {
+		rhsCol = min(a.matrix.Size, a.columnAsRHS)
 	}
 
 	matrixEnded := false
@@ -156,28 +163,37 @@ func (t *App) readMatrixFromFile(filename string) error {
 					continue
 				}
 
-				real, err := strconv.ParseFloat(fields[2], 64)
+				real := float64(0.0)
+				imag := float64(0.0)
+
+				real, err = strconv.ParseFloat(fields[2], 64)
 				if err != nil {
 					continue
 				}
 
-				element := t.matrix.GetElement(row, col)
+				element := a.matrix.GetElement(row, col)
 				if element != nil {
 					element.Real += real
 
 					if isComplex && len(fields) >= 4 {
-						if imag, err := strconv.ParseFloat(fields[3], 64); err == nil {
+						if imag, err = strconv.ParseFloat(fields[3], 64); err == nil {
 							element.Imag += imag
 						}
 					}
 				}
 
-				if t.columnAsRHS && col == t.matrix.Size {
-					t.rhs[row] = real
-					if isComplex && len(fields) >= 4 {
-						if imag, err := strconv.ParseFloat(fields[3], 64); err == nil {
-							t.irhs[row] = imag
+				if col == rhsCol {
+					if a.matrix.Complex {
+						if a.matrix.Config.SeparatedComplexVectors {
+							a.rhs[row] = real
+							a.irhs[row] = imag
+						} else {
+							idx := 2 * row
+							a.rhs[idx] = real
+							a.rhs[idx+1] = imag
 						}
+					} else {
+						a.rhs[row] = real
 					}
 				}
 			}
@@ -187,30 +203,27 @@ func (t *App) readMatrixFromFile(filename string) error {
 	}
 
 	// RHS vector
-	if !t.columnAsRHS {
+	if !a.useColumnAsRHS {
 		if len(rhsValues) > 0 && strings.HasPrefix(rhsValues[0], "Beginning") {
 			rhsValues = rhsValues[1:]
 		}
-
-		t.rhs[0] = 0
-		t.rhs[1] = 0
 
 		for i := int64(0); i < size && i < int64(len(rhsValues)); i++ {
 			fields := strings.Fields(rhsValues[i])
 			if len(fields) > 0 {
 				if value, err := strconv.ParseFloat(fields[0], 64); err == nil {
 					if isComplex && !config.SeparatedComplexVectors {
-						t.rhs[2*i+2] = value
+						a.rhs[2*i+2] = value
 						if len(fields) > 1 {
 							if imag, err := strconv.ParseFloat(fields[1], 64); err == nil {
-								t.rhs[2*i+2+1] = imag
+								a.rhs[2*i+2+1] = imag
 							}
 						}
 					} else {
-						t.rhs[i+1] = value
+						a.rhs[i+1] = value
 						if isComplex && len(fields) > 1 {
 							if imag, err := strconv.ParseFloat(fields[1], 64); err == nil {
-								t.irhs[i+1] = imag
+								a.irhs[i+1] = imag
 							}
 						}
 					}
@@ -223,7 +236,7 @@ func (t *App) readMatrixFromFile(filename string) error {
 		return fmt.Errorf("error reading file: %v", err)
 	}
 
-	if !t.solutionOnly {
+	if !a.solutionOnly {
 		fmt.Printf("Matrix is %d x %d ", size, size)
 		if isComplex {
 			fmt.Printf("and complex.\n")
@@ -235,89 +248,89 @@ func (t *App) readMatrixFromFile(filename string) error {
 	return nil
 }
 
-func (t *App) solve() error {
+func (a *App) solve() error {
 	orderFactorStart := time.Now()
-	if err := t.matrix.OrderAndFactor(t.rhs, t.relThreshold, t.absThreshold, true); err != nil {
+	if err := a.matrix.OrderAndFactor(a.rhs, a.relThreshold, a.absThreshold, true); err != nil {
 		return fmt.Errorf("initial order and factor failed: %v", err)
 	}
 
 	initialFactorTime := time.Since(orderFactorStart).Seconds()
 
 	partitionStart := time.Now()
-	t.matrix.Partition(sparse.DEFAULT_PARTITION)
+	a.matrix.Partition(sparse.DEFAULT_PARTITION)
 	partitionTime := time.Since(partitionStart).Seconds()
 
 	var err error
-	if t.matrix.Complex {
-		if t.matrix.Config.Transpose {
-			t.solution, t.isolution, err = t.matrix.SolveComplexTransposed(t.rhs, t.irhs)
+	if a.matrix.Complex {
+		if a.matrix.Config.Transpose {
+			a.solution, a.isolution, err = a.matrix.SolveComplexTransposed(a.rhs, a.irhs)
 		} else {
-			t.solution, t.isolution, err = t.matrix.SolveComplex(t.rhs, t.irhs)
+			a.solution, a.isolution, err = a.matrix.SolveComplex(a.rhs, a.irhs)
 		}
 		if err != nil {
 			return fmt.Errorf("initial complex solve failed: %v", err)
 		}
 	} else {
-		if t.matrix.Config.Transpose {
-			t.solution, err = t.matrix.SolveTransposed(t.rhs)
+		if a.matrix.Config.Transpose {
+			a.solution, err = a.matrix.SolveTransposed(a.rhs)
 		} else {
-			t.solution, err = t.matrix.Solve(t.rhs)
+			a.solution, err = a.matrix.Solve(a.rhs)
 		}
 		if err != nil {
 			return fmt.Errorf("initial solve failed: %v", err)
 		}
 	}
 
-	limit := t.matrix.Size
-	if t.printLimit > 0 && int64(t.printLimit) < limit {
-		limit = int64(t.printLimit)
+	limit := a.matrix.Size
+	if a.printLimit > 0 && int64(a.printLimit) < limit {
+		limit = int64(a.printLimit)
 	}
-	if !t.matrix.Complex {
+	if !a.matrix.Complex {
 		fmt.Println("\nSolution:")
 		for i := int64(1); i <= limit; i++ {
-			fmt.Printf("%-16.9g\n", t.solution[i])
+			fmt.Printf("%-16.9g\n", a.solution[i])
 		}
-		if limit < t.matrix.Size && limit != 0 {
+		if limit < a.matrix.Size && limit != 0 {
 			fmt.Printf("Solution list truncated.\n")
 		}
 	} else {
-		if t.matrix.Config.Transpose {
-			t.solution, t.isolution, err = t.matrix.SolveComplexTransposed(t.rhs, t.irhs)
+		if a.matrix.Config.Transpose {
+			a.solution, a.isolution, err = a.matrix.SolveComplexTransposed(a.rhs, a.irhs)
 		} else {
-			t.solution, t.isolution, err = t.matrix.SolveComplex(t.rhs, t.irhs)
+			a.solution, a.isolution, err = a.matrix.SolveComplex(a.rhs, a.irhs)
 		}
 		if err != nil {
 			return fmt.Errorf("initial complex solve failed: %v", err)
 		}
 
 		fmt.Println("\nComplex solution:")
-		if t.matrix.Config.SeparatedComplexVectors {
+		if a.matrix.Config.SeparatedComplexVectors {
 			for i := int64(1); i <= limit; i++ {
-				fmt.Printf("%-16.9g   %-.9g j\n", t.solution[i], t.isolution[i])
+				fmt.Printf("%-16.9g   %-.9g j\n", a.solution[i], a.isolution[i])
 			}
 		} else {
 			for i := int64(1); i <= limit; i++ {
-				fmt.Printf("%-16.9g   %-.9g j\n", t.solution[i*2], t.solution[i*2+1])
+				fmt.Printf("%-16.9g   %-.9g j\n", a.solution[i*2], a.solution[i*2+1])
 			}
 		}
 	}
 
-	if t.solutionOnly {
-		limit := t.matrix.Size
-		if t.printLimit > 0 && int64(t.printLimit) < limit {
-			limit = int64(t.printLimit)
+	if a.solutionOnly {
+		limit := a.matrix.Size
+		if a.printLimit > 0 && int64(a.printLimit) < limit {
+			limit = int64(a.printLimit)
 		}
 		fmt.Printf("\nSolution (first %d terms):\n", limit)
-		if t.matrix.Complex {
+		if a.matrix.Complex {
 			for i := int64(1); i <= limit; i++ {
-				fmt.Printf("%-16.9g   %-.9g j\n", t.solution[i], t.isolution[i])
+				fmt.Printf("%-16.9g   %-.9g j\n", a.solution[i], a.isolution[i])
 			}
 		} else {
 			for i := int64(1); i <= limit; i++ {
-				fmt.Printf("%-.9g\n", t.solution[i])
+				fmt.Printf("%-.9g\n", a.solution[i])
 			}
 		}
-		if limit < t.matrix.Size && limit != 0 {
+		if limit < a.matrix.Size && limit != 0 {
 			fmt.Printf("Solution list truncated.\n")
 		}
 		fmt.Println()
@@ -325,15 +338,15 @@ func (t *App) solve() error {
 		fmt.Printf("\nStatistics:\n")
 		fmt.Printf("Initial factor time = %.2f seconds\n", initialFactorTime)
 		fmt.Printf("Partition time = %.2f seconds\n", partitionTime)
-		if t.iterations > 0 {
-			fmt.Printf("Build time = %.3f seconds\n", t.buildTime/float64(t.iterations))
-			fmt.Printf("Factor time = %.3f seconds\n", t.factorTime/float64(t.iterations))
-			fmt.Printf("Solve time = %.3f seconds\n", t.solveTime/float64(t.iterations))
+		if a.iterations > 0 {
+			fmt.Printf("Build time = %.3f seconds\n", a.buildTime/float64(a.iterations))
+			fmt.Printf("Factor time = %.3f seconds\n", a.factorTime/float64(a.iterations))
+			fmt.Printf("Solve time = %.3f seconds\n", a.solveTime/float64(a.iterations))
 		}
 
-		fmt.Printf("\nTotal number of elements = %d\n", t.matrix.ElementCount())
-		fmt.Printf("Average number of elements per row initially = %.2f\n", float64(t.matrix.ElementCount()-t.matrix.FillinCount())/float64(t.matrix.GetSize(false)))
-		fmt.Printf("Total number of fill-ins = %d\n", t.matrix.Fillins)
+		fmt.Printf("\nTotal number of elements = %d\n", a.matrix.ElementCount())
+		fmt.Printf("Average number of elements per row initially = %.2f\n", float64(a.matrix.ElementCount()-a.matrix.FillinCount())/float64(a.matrix.GetSize(false)))
+		fmt.Printf("Total number of fill-ins = %d\n", a.matrix.Fillins)
 	}
 	return nil
 }
@@ -368,7 +381,7 @@ func main() {
 	app.solutionOnly = *solutionOnly
 	app.printLimit = *printLimit
 	app.iterations = *iterations
-	app.columnAsRHS = bool(*columnAsRHS)
+	app.useColumnAsRHS = bool(*columnAsRHS)
 
 	if !app.solutionOnly {
 		// fmt.Printf("Sparse1.4\nCopyright (c) 2003, Kenneth S. Kundert.\nAll rights reserved.\n")

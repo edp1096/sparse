@@ -24,7 +24,7 @@ type Configuration struct {
 	Delete            bool // Not use
 	Strip             bool // Not use
 	ModifiedNodal     bool
-	QuadElement       bool // Todo: getAdmittance............
+	QuadElement       bool // Not use. maybe never do this: getAdmittance
 	Transpose         bool // Flag for transpose job
 	Scaling           bool // Not use
 	Documentation     bool // Not use. fortran
@@ -48,6 +48,8 @@ type Configuration struct {
 	DefaultPartition      int
 	PrinterWidth          int // Default: 80
 	Annotate              int // 0: None, 1: OnStrangeBehavior , 2: Full
+
+	TrashCan *Element
 }
 
 type Matrix struct {
