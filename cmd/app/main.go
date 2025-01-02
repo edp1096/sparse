@@ -452,7 +452,7 @@ func (t *App) printResourceUsage() {
 	runtime.ReadMemStats(&m)
 
 	fmt.Printf("\nAggregate resource usage:\n")
-	fmt.Printf("    Time required = %.4f.\n", time.Since(t.startTime).Seconds())
+	fmt.Printf("    Time required = %.4f seconds.\n", time.Since(t.startTime).Seconds())
 	fmt.Printf("    Heap memory used = %d kBytes\n", m.HeapAlloc/1024)
 	fmt.Printf("    Total memory from OS = %d kBytes\n\n", m.Sys/1024)
 }
