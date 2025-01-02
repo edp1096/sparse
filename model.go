@@ -1,6 +1,8 @@
 package sparse
 
 const (
+	SLACK float64 = 1e4
+
 	DIRECT_PARTITION   int = 1
 	INDIRECT_PARTITION int = 2
 	AUTO_PARTITION     int = 3
@@ -28,11 +30,11 @@ type Configuration struct {
 	Transpose         bool // Flag for transpose job
 	Scaling           bool // Not use
 	Documentation     bool // Not use. fortran
-	Determinant       bool // Not use
-	Multiplication    bool // Not use
-	Stability         bool // Not use
-	Condition         bool // Not use
-	PseudoCondition   bool // Not use
+	Stability         bool
+	Condition         bool
+	PseudoCondition   bool
+	Determinant       bool
+	Multiplication    bool
 	Fortran           bool // Not use. fortran
 	Debug             bool // Not use
 
@@ -48,8 +50,6 @@ type Configuration struct {
 	DefaultPartition      int
 	PrinterWidth          int // Default: 80
 	Annotate              int // 0: None, 1: OnStrangeBehavior , 2: Full
-
-	TrashCan *Element
 }
 
 type Matrix struct {
@@ -65,15 +65,16 @@ type Matrix struct {
 
 	// Elements      *list.List // Element list. not use
 
-	Diags         []*Element // Diagonal elements (as reciprocal) [1...Size]
-	FirstInRow    []*Element // First element in each row [1...Size]
-	FirstInCol    []*Element // First element in each column [1...Size]
-	Intermediate  []float64  // Temporary vector for rhs, solution, etc. [1...Size]
-	MarkowitzRow  []int64    // Markowitz counts of each row [1...Size]
-	MarkowitzCol  []int64    // Markowitz counts of each column [1...Size]
-	MarkowitzProd []int64    // Markowitz products [1...Size]
-	RelThreshold  float64    // Relative threshold
-	AbsThreshold  float64    // Absolute threshold
+	Diags                 []*Element // Diagonal elements (as reciprocal) [1...Size]
+	FirstInRow            []*Element // First element in each row [1...Size]
+	FirstInCol            []*Element // First element in each column [1...Size]
+	Intermediate          []float64  // Temporary vector for rhs, solution, etc. [1...Size]
+	MarkowitzRow          []int64    // Markowitz counts of each row [1...Size]
+	MarkowitzCol          []int64    // Markowitz counts of each column [1...Size]
+	MarkowitzProd         []int64    // Markowitz products [1...Size]
+	MaxRowCountInLowerTri int64      // Maximum number of off-diagonals in L
+	RelThreshold          float64    // Relative threshold
+	AbsThreshold          float64    // Absolute threshold
 
 	// Factoring status flags
 	NeedsOrdering             bool // reorder neccessary
@@ -106,6 +107,11 @@ type Matrix struct {
 	ExtToIntColMap []int64 // External->Internal columns map [1...Size]
 }
 
+type ComplexNumber struct {
+	Real float64
+	Imag float64
+}
+
 type Element struct {
 	Real      float64
 	Imag      float64
@@ -113,6 +119,7 @@ type Element struct {
 	Col       int64
 	NextInRow *Element
 	NextInCol *Element
+	InitInfo  *ComplexNumber
 }
 
 type Template struct {

@@ -4,6 +4,7 @@ import (
 	"bufio"
 	"flag"
 	"fmt"
+	"math"
 	"os"
 	"path/filepath"
 	"runtime"
@@ -17,6 +18,11 @@ import (
 var (
 	annotate                = 0
 	separatedComplexVectors = false
+	stability               = true
+	condition               = true
+	pseudoCondition         = true
+	determinant             = true
+	multiplication          = true
 )
 
 type App struct {
@@ -34,10 +40,22 @@ type App struct {
 	irhs           []float64
 	solution       []float64
 	isolution      []float64
-	buildTime      float64
-	factorTime     float64
-	solveTime      float64
-	startTime      time.Time
+
+	largestBefore   float64
+	largestAfter    float64
+	roundoff        float64
+	infNorm         float64
+	conditionNumber float64
+	psudoCondition  float64
+	determinant     float64
+	iDeterminant    *float64
+	detExponent     int
+	detTime         float64
+
+	buildTime  float64
+	factorTime float64
+	solveTime  float64
+	startTime  time.Time
 }
 
 func InitApp() *App {
@@ -108,7 +126,13 @@ func (a *App) readMatrixFromFile(filename string) error {
 		SeparatedComplexVectors: separatedComplexVectors,
 		Expandable:              true,
 		Translate:               true,
+		Initialize:              true,
 		ModifiedNodal:           true,
+		Stability:               stability,
+		Condition:               condition,
+		PseudoCondition:         pseudoCondition,
+		Determinant:             determinant,
+		Multiplication:          multiplication,
 		TiesMultiplier:          5,
 		PrinterWidth:            140,
 		Annotate:                annotate,
@@ -119,7 +143,7 @@ func (a *App) readMatrixFromFile(filename string) error {
 		return fmt.Errorf("failed to create matrix: %v", err)
 	}
 
-	a.matrix.Clear()
+	a.matrix.Initialize()
 
 	a.rhs = make([]float64, size+1)
 	if isComplex {
@@ -174,11 +198,16 @@ func (a *App) readMatrixFromFile(filename string) error {
 				element := a.matrix.GetElement(row, col)
 				if element != nil {
 					element.Real += real
-
 					if isComplex && len(fields) >= 4 {
 						if imag, err = strconv.ParseFloat(fields[3], 64); err == nil {
 							element.Imag += imag
 						}
+					}
+
+					if element.InitInfo == nil {
+						element.InitInfo = &sparse.ComplexNumber{}
+						element.InitInfo.Real = real
+						element.InitInfo.Imag = imag
 					}
 				}
 
@@ -249,6 +278,13 @@ func (a *App) readMatrixFromFile(filename string) error {
 }
 
 func (a *App) solve() error {
+	if !a.solutionOnly && a.matrix.Config.Stability {
+		a.largestBefore = a.matrix.LargestElement()
+	}
+	if !a.solutionOnly && a.matrix.Config.Condition {
+		a.infNorm = a.matrix.Norm()
+	}
+
 	orderFactorStart := time.Now()
 	if err := a.matrix.OrderAndFactor(a.rhs, a.relThreshold, a.absThreshold, true); err != nil {
 		return fmt.Errorf("initial order and factor failed: %v", err)
@@ -281,8 +317,26 @@ func (a *App) solve() error {
 		}
 	}
 
+	if !a.solutionOnly && a.matrix.Config.Stability {
+		a.largestAfter = a.matrix.LargestElement()
+		a.roundoff = a.matrix.Roundoff(a.largestAfter)
+	}
+
+	var conditionTime float64
+	if !a.solutionOnly && a.matrix.Config.Condition {
+		a.conditionNumber, err = a.matrix.Condition(a.infNorm)
+		if err != nil {
+			fmt.Printf("initial condition number failed: %v", err)
+		}
+		conditionTime = time.Since(partitionStart).Seconds()
+	}
+
+	if !a.solutionOnly && a.matrix.Config.PseudoCondition {
+		a.psudoCondition = a.matrix.PseudoCondition()
+	}
+
 	limit := a.matrix.Size
-	if a.printLimit > 0 && int64(a.printLimit) < limit {
+	if !a.solutionOnly && a.printLimit > 0 && int64(a.printLimit) < limit {
 		limit = int64(a.printLimit)
 	}
 	if !a.matrix.Complex {
@@ -290,7 +344,7 @@ func (a *App) solve() error {
 		for i := int64(1); i <= limit; i++ {
 			fmt.Printf("%-16.9g\n", a.solution[i])
 		}
-		if limit < a.matrix.Size && limit != 0 {
+		if !a.solutionOnly && limit < a.matrix.Size && limit != 0 {
 			fmt.Printf("Solution list truncated.\n")
 		}
 	} else {
@@ -314,39 +368,81 @@ func (a *App) solve() error {
 			}
 		}
 	}
+	fmt.Println()
 
-	if a.solutionOnly {
-		limit := a.matrix.Size
-		if a.printLimit > 0 && int64(a.printLimit) < limit {
-			limit = int64(a.printLimit)
-		}
-		fmt.Printf("\nSolution (first %d terms):\n", limit)
+	var det float64
+	if !a.solutionOnly && a.matrix.Config.Determinant {
+		startTime := time.Now()
+		a.determinant, a.detExponent, a.iDeterminant = a.matrix.Determinant()
+		a.detTime = time.Since(startTime).Seconds()
+
 		if a.matrix.Complex {
-			for i := int64(1); i <= limit; i++ {
-				fmt.Printf("%-16.9g   %-.9g j\n", a.solution[i], a.isolution[i])
+			det = math.Hypot(a.determinant, *a.iDeterminant)
+			for det >= 10.0 {
+				det *= 0.1
+				a.detExponent++
 			}
 		} else {
-			for i := int64(1); i <= limit; i++ {
-				fmt.Printf("%-.9g\n", a.solution[i])
-			}
+			det = a.determinant
 		}
-		if limit < a.matrix.Size && limit != 0 {
-			fmt.Printf("Solution list truncated.\n")
+	}
+
+	var normalizedResidual, maxRHS float64
+	if a.matrix.Config.Multiplication {
+		normalizedResidual, maxRHS, err = a.matrix.CalculateNormalizedResidual(a.rhs, a.solution, a.irhs, a.isolution)
+		if err != nil {
+			fmt.Printf("initial normalized residual failed: %v", err)
 		}
-		fmt.Println()
-	} else {
-		fmt.Printf("\nStatistics:\n")
+	}
+
+	if !a.solutionOnly {
+		additionalLines := ""
+
+		fmt.Printf("Statistics:\n")
 		fmt.Printf("Initial factor time = %.2f seconds\n", initialFactorTime)
 		fmt.Printf("Partition time = %.2f seconds\n", partitionTime)
 		if a.iterations > 0 {
 			fmt.Printf("Build time = %.3f seconds\n", a.buildTime/float64(a.iterations))
 			fmt.Printf("Factor time = %.3f seconds\n", a.factorTime/float64(a.iterations))
 			fmt.Printf("Solve time = %.3f seconds\n", a.solveTime/float64(a.iterations))
+			if a.matrix.Config.Condition {
+				fmt.Printf("Condition time = %.3f seconds\n", conditionTime/float64(a.iterations))
+			}
+		}
+
+		if a.matrix.Config.Stability {
+			if a.largestBefore != 0.0 {
+				additionalLines += fmt.Sprintf("Growth = %.2g\n", a.largestAfter/a.largestBefore)
+			}
+			additionalLines += fmt.Sprintf("Max error in matrix = %.2g\n", a.roundoff)
+		}
+		if a.matrix.Config.Condition {
+			additionalLines += fmt.Sprintf("Condition number = %.2g\n", 1/a.conditionNumber)
+		}
+		if a.matrix.Config.Condition && a.matrix.Config.Stability {
+			additionalLines += fmt.Sprintf("Estimated upper bound of error in solution = %.2g\n", a.roundoff/a.conditionNumber)
+		}
+		if a.matrix.Config.PseudoCondition {
+			additionalLines += fmt.Sprintf("PseudoCondition = %.2g\n", a.psudoCondition)
+		}
+		if a.matrix.Config.Determinant {
+			fmt.Printf("Determinant time = %.2f seconds\n", a.detTime)
+			if det != 0.0 && a.detExponent != 0 {
+				additionalLines += fmt.Sprintf("Determinant = %.3ge%d\n", det, a.detExponent)
+			} else {
+				additionalLines += fmt.Sprintf("Determinant = %.3g\n", det)
+			}
+		}
+		if a.matrix.Config.Multiplication && maxRHS != 0.0 {
+			additionalLines += fmt.Sprintf("Normalized residual = %.2g\n", normalizedResidual)
 		}
 
 		fmt.Printf("\nTotal number of elements = %d\n", a.matrix.ElementCount())
 		fmt.Printf("Average number of elements per row initially = %.2f\n", float64(a.matrix.ElementCount()-a.matrix.FillinCount())/float64(a.matrix.GetSize(false)))
 		fmt.Printf("Total number of fill-ins = %d\n", a.matrix.Fillins)
+		fmt.Println()
+
+		fmt.Print(additionalLines)
 	}
 	return nil
 }
@@ -385,7 +481,7 @@ func main() {
 
 	if !app.solutionOnly {
 		// fmt.Printf("Sparse1.4\nCopyright (c) 2003, Kenneth S. Kundert.\nAll rights reserved.\n")
-		fmt.Printf("Sparse golang\nSungwook Shin\n\n")
+		fmt.Printf("Sparse golang\nCopyright (c) 2025, Robert Sungwook Shin\n\n")
 	}
 
 	if err := app.readMatrixFromFile(args[0]); err != nil {
@@ -395,6 +491,8 @@ func main() {
 
 	app.matrix.RelThreshold = *relThreshold
 	app.matrix.AbsThreshold = *absThreshold
+
+	app.matrix.Initialize()
 
 	if app.matrix.Config.ModifiedNodal {
 		app.matrix.MNAPreorder()

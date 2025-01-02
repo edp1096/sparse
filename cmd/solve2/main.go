@@ -2,7 +2,6 @@ package main
 
 import (
 	"fmt"
-	"log"
 	"sparse"
 )
 
@@ -87,7 +86,6 @@ func main() {
 			fmt.Printf("b[%d] = %.4f + %.4fj\n", i, b[i], ib[i])
 		}
 
-		log.Println(x)
 		fmt.Println("\nSolution complex vector x:")
 		for i := 1; i <= 3; i++ {
 			fmt.Printf("x[%d] = %.4f + %.4fj\n", i, x[i], ix[i])

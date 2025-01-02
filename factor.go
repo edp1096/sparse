@@ -51,6 +51,7 @@ func (m *Matrix) OrderAndFactor(rhs []float64, relThreshold, absThreshold float6
 
 	m.CountMarkowitz(rhs, step)
 	m.MarkowitzProducts(step)
+	m.MaxRowCountInLowerTri = -1
 
 	// Reordering and factorization
 	for ; step <= size; step++ {

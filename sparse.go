@@ -67,6 +67,39 @@ func Create(size int64, config *Configuration) (*Matrix, error) {
 	return m, nil
 }
 
+func (m *Matrix) GetInitInfo(element *Element) *ComplexNumber {
+	return element.InitInfo
+}
+
+func (m *Matrix) SetInitInfo(element *Element, value *ComplexNumber) {
+	// element.InitInfo = value
+	element.InitInfo = &ComplexNumber{Real: value.Real, Imag: value.Imag}
+}
+
+func (m *Matrix) Initialize() error {
+	for j := int64(1); j <= m.Size; j++ {
+		element := m.FirstInCol[j]
+		for element != nil {
+			if element.InitInfo == nil {
+				element.Real = 0.0
+				element.Imag = 0.0
+			} else {
+				element.Real = element.InitInfo.Real
+				if m.Complex {
+					element.Imag = element.InitInfo.Imag
+				}
+			}
+			element = element.NextInCol
+		}
+	}
+
+	m.Factored = false
+	m.SingularCol = 0
+	m.SingularRow = 0
+
+	return nil
+}
+
 // func (m *Matrix) ClearNotUse() {
 // 	m.Elements = 0
 // 	m.Fillins = 0
@@ -203,6 +236,10 @@ func (m *Matrix) createElement(row, col int64, firstInRow, firstInCol **Element,
 
 	if m.Complex {
 		element.Imag = 0.0
+	}
+	if m.Config.Initialize {
+		// element.InitInfo = &ComplexNumber{Real: element.Real, Imag: element.Imag}
+		element.InitInfo = nil
 	}
 
 	m.Elements++
