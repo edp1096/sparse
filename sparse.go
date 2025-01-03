@@ -70,6 +70,7 @@ func Create(size int64, config *Configuration) (*Matrix, error) {
 		NeedsOrdering:   true,
 		RelThreshold:    config.DefaultThreshold,
 		AbsThreshold:    0.0,
+		// TrashCan:        &Element{NextInRow: nil, NextInCol: nil},
 	}
 
 	if err := m.CreateInternalVectors(); err != nil {
@@ -93,7 +94,6 @@ func (m *Matrix) GetInitInfo(element *Element) *ComplexNumber {
 }
 
 func (m *Matrix) SetInitInfo(element *Element, value *ComplexNumber) {
-	// element.InitInfo = value
 	element.InitInfo = &ComplexNumber{Real: value.Real, Imag: value.Imag}
 }
 
@@ -107,9 +107,6 @@ func (m *Matrix) Initialize() error {
 			} else {
 				element.Real = element.InitInfo.Real
 				element.Imag = element.InitInfo.Imag
-				// if m.Complex {
-				// 	element.Imag = element.InitInfo.Imag
-				// }
 			}
 			element = element.NextInCol
 		}
@@ -118,6 +115,9 @@ func (m *Matrix) Initialize() error {
 	m.Factored = false
 	m.SingularCol = 0
 	m.SingularRow = 0
+
+	// m.TrashCan.Real = 0.0
+	// m.TrashCan.Imag = 0.0
 
 	return nil
 }
@@ -137,6 +137,9 @@ func (m *Matrix) Clear() {
 	m.Factored = false
 	m.SingularCol = 0
 	m.SingularRow = 0
+
+	// m.TrashCan.Real = 0.0
+	// m.TrashCan.Imag = 0.0
 }
 
 func (m *Matrix) Destroy() {
@@ -176,6 +179,14 @@ func (m *Matrix) Destroy() {
 	m.PivotSelectionMethod = 0
 
 	m.Singletons = 0
+
+	// m.TrashCan.Row = 0
+	// m.TrashCan.Col = 0
+	// m.TrashCan.Real = 0.0
+	// m.TrashCan.Imag = 0.0
+	// m.TrashCan.NextInRow = nil
+	// m.TrashCan.NextInCol = nil
+	// m.TrashCan.InitInfo = nil
 }
 
 func (m *Matrix) createElement(row, col int64, firstInRow, firstInCol **Element, fillin bool) *Element {
@@ -273,15 +284,12 @@ func (m *Matrix) createElement(row, col int64, firstInRow, firstInCol **Element,
 }
 
 func (m *Matrix) GetElement(row, col int64) *Element {
-	// if row < 1 || col < 1 || row > m.Size || col > m.Size {
-	// 	return nil
-	// }
-
 	if row < 0 || col < 0 {
 		return nil
 	}
 	if row == 0 || col == 0 {
 		return &Element{}
+		// return m.TrashCan
 	}
 
 	internalRow, internalCol := row, col

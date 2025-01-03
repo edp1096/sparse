@@ -37,15 +37,9 @@ func main() {
 	}
 
 	stamps := make([]sparse.Template, 3)
-	if err = A.GetAdmittance(1, 0, &stamps[0]); err != nil {
-		panic(err)
-	}
-	if err = A.GetAdmittance(1, 2, &stamps[1]); err != nil {
-		panic(err)
-	}
-	if err = A.GetAdmittance(2, 0, &stamps[2]); err != nil {
-		panic(err)
-	}
+	A.GetAdmittance(1, 0, &stamps[0])
+	A.GetAdmittance(1, 2, &stamps[1])
+	A.GetAdmittance(2, 0, &stamps[2])
 
 	/* Drive the circuit at node 1. */
 	// SeparatedComplexVectors = true

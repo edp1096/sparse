@@ -103,6 +103,8 @@ type Matrix struct {
 	IntToExtColMap []int64 // Internal->External columns map [1...Size]
 	ExtToIntRowMap []int64 // External->Internal rows map [1...Size]
 	ExtToIntColMap []int64 // External->Internal columns map [1...Size]
+
+	// TrashCan *Element // Not use yet. eat more memory
 }
 
 type ComplexNumber struct {
