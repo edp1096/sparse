@@ -519,7 +519,7 @@ func main() {
 		a.columnAsRHS = int64(*columnAsRHS)
 	}
 
-	fmt.Printf("Sparse Go\nCopyright (c) 2025, Robert Sungwook Shin\n\n")
+	fmt.Printf("Sparse Go\nCopyright (c) 2025, Robert Sungwook Shin.\n\n")
 
 	if err := a.readMatrixFromFile(args[0]); err != nil {
 		fmt.Printf("%s: %v\n", filepath.Base(os.Args[0]), err)
