@@ -53,7 +53,6 @@ func (m *Matrix) OrderAndFactor(rhs []float64, relThreshold, absThreshold float6
 	m.MarkowitzProducts(step)
 	m.MaxRowCountInLowerTri = -1
 
-	// Reordering and factorization
 	for ; step <= size; step++ {
 		pivot := m.SearchForPivot(step, diagPivoting)
 		if pivot == nil {
@@ -98,7 +97,6 @@ func (m *Matrix) Factor() error {
 		return m.FactorComplex()
 	}
 
-	// REAL
 	if m.Diags[1] == nil || m.Diags[1].Real == 0.0 {
 		m.SingularRow = 1
 		m.SingularCol = 1
@@ -176,11 +174,8 @@ func (m *Matrix) FactorComplex() error {
 
 	m.complexReciprocal(m.Diags[1])
 
-	// Start factorization
 	for step := int64(2); step <= m.Size; step++ {
 		if m.DoComplexDirect[step] {
-			// Update column using direct addressing scatter-gather
-			// Scatter
 			dest := make([]*Element, m.Size+1)
 			for i := range dest {
 				dest[i] = &Element{}
@@ -190,7 +185,6 @@ func (m *Matrix) FactorComplex() error {
 				dest[element.Row].Imag = element.Imag
 			}
 
-			// Update column
 			for column := m.FirstInCol[step]; column.Row < step; column = column.NextInCol {
 				element := m.Diags[column.Row]
 				m.complexMultAssign(dest[column.Row], element)
@@ -202,13 +196,11 @@ func (m *Matrix) FactorComplex() error {
 				}
 			}
 
-			// Gather
 			for element := m.FirstInCol[step]; element != nil; element = element.NextInCol {
 				element.Real = dest[element.Row].Real
 				element.Imag = dest[element.Row].Imag
 			}
 
-			// Check for singular matrix
 			if dest[step].Real*dest[step].Real+dest[step].Imag*dest[step].Imag == 0.0 {
 				m.SingularRow = step
 				m.SingularCol = step
@@ -219,14 +211,11 @@ func (m *Matrix) FactorComplex() error {
 			m.Diags[step].Real = dest[step].Real
 			m.Diags[step].Imag = dest[step].Imag
 		} else {
-			// Update column using indirect addressing scatter-gather
 			dest := make([]*Element, m.Size+1)
-			// Scatter
 			for element := m.FirstInCol[step]; element != nil; element = element.NextInCol {
 				dest[element.Row] = element
 			}
 
-			// Update column
 			for column := m.FirstInCol[step]; column.Row < step; column = column.NextInCol {
 				element := m.Diags[column.Row]
 				m.complexMultAssign(dest[column.Row], element)
@@ -236,7 +225,6 @@ func (m *Matrix) FactorComplex() error {
 				}
 			}
 
-			// Check for singular matrix
 			if m.Diags[step].Real*m.Diags[step].Real+m.Diags[step].Imag*m.Diags[step].Imag == 0.0 {
 				m.SingularRow = step
 				m.SingularCol = step
