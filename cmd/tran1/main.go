@@ -75,8 +75,8 @@ func main() {
 	}
 
 	fmt.Println("\nCircuit Parameters:")
-	fmt.Printf("R1: %.0f Ω\n", R1)
-	fmt.Printf("R2: %.0f Ω\n", R2)
+	fmt.Printf("R1: %.0f Ohm\n", R1)
+	fmt.Printf("R2: %.0f Ohm\n", R2)
 	fmt.Printf("Vpeak: %.1f V\n", Vpeak)
 	fmt.Printf("Frequency: %.0f Hz\n", freq)
 	fmt.Printf("Expected voltage division ratio: %.3f\n", R2/(R1+R2))
