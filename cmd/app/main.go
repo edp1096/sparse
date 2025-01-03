@@ -385,9 +385,6 @@ func (a *App) solve() error {
 		for i := int64(1); i <= limit; i++ {
 			fmt.Printf("%-16.9g\n", a.solution[i])
 		}
-		if !a.solutionOnly && limit < a.matrix.Size && limit != 0 {
-			fmt.Printf("Solution list truncated.\n")
-		}
 	} else {
 		fmt.Println("\nComplex solution:")
 		if a.matrix.Config.SeparatedComplexVectors {
@@ -399,6 +396,9 @@ func (a *App) solve() error {
 				fmt.Printf("%-16.9g   %-.9g j\n", a.solution[i*2], a.solution[i*2+1])
 			}
 		}
+	}
+	if !a.solutionOnly && limit < a.matrix.Size && limit != 0 {
+		fmt.Printf("Solution list truncated.\n")
 	}
 	fmt.Println()
 
@@ -521,7 +521,9 @@ func main() {
 		os.Exit(1)
 	}
 
-	a.matrix.RelThreshold = *relThreshold
+	if *relThreshold != 0.001 && *relThreshold > 0.0 {
+		a.matrix.RelThreshold = *relThreshold
+	}
 	a.matrix.AbsThreshold = *absThreshold
 
 	a.matrix.Initialize()

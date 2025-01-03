@@ -12,6 +12,7 @@ func checkConfig(config *Configuration) *Configuration {
 		Expandable:              true,
 		Translate:               true,
 		ModifiedNodal:           true,
+		DefaultThreshold:        1.0e-3,
 		TiesMultiplier:          5,
 		DefaultPartition:        AUTO_PARTITION,
 		PrinterWidth:            80,
@@ -22,6 +23,9 @@ func checkConfig(config *Configuration) *Configuration {
 		config = &defaultConfig
 	}
 
+	if config.DefaultThreshold < 0.0 {
+		config.DefaultThreshold = 1.0e-3
+	}
 	if config.TiesMultiplier <= 0 {
 		config.TiesMultiplier = 5
 	}
@@ -64,7 +68,7 @@ func Create(size int64, config *Configuration) (*Matrix, error) {
 		ExtToIntRowMap:  make([]int64, matrixSize+1),
 		ExtToIntColMap:  make([]int64, matrixSize+1),
 		NeedsOrdering:   true,
-		RelThreshold:    0.001,
+		RelThreshold:    config.DefaultThreshold,
 		AbsThreshold:    0.0,
 	}
 

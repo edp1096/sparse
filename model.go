@@ -36,7 +36,7 @@ type Configuration struct {
 	Fortran           bool // Not use. fortran
 	Debug             bool // Not use
 
-	DefaultThreshold      float64
+	DefaultThreshold      float64 // For relative threshold
 	DiagPivotingAsDefault bool
 	SpaceForElements      int
 	SpaceForFillIns       int
