@@ -499,7 +499,7 @@ func main() {
 	absThreshold := flag.Float64("a", 0.0, "Use x as absolute threshold")
 	printLimit := flag.Int("n", 9, "Print first n terms of solution vector")
 	iterations := flag.Int("i", 1, "Repeat build/factor/solve n times")
-	columnAsRHS := flag.Int("b", 1, "Use n'th column of matrix as b in Ax=b")
+	columnAsRHS := flag.Int("b", -1, "Use n'th column of matrix as b in Ax=b")
 	flag.Parse()
 
 	args := flag.Args()
