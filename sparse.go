@@ -31,6 +31,8 @@ func checkConfig(config *Configuration) *Configuration {
 	if config.PrinterWidth <= 0 {
 		config.PrinterWidth = 80
 	}
+
+	return config
 }
 
 func Create(size int64, config *Configuration) (*Matrix, error) {
