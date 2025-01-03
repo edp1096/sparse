@@ -4,11 +4,7 @@ import (
 	"fmt"
 )
 
-func Create(size int64, config *Configuration) (*Matrix, error) {
-	if size <= 0 {
-		return nil, fmt.Errorf("invalid size: %d", size)
-	}
-
+func checkConfig(config *Configuration) *Configuration {
 	defaultConfig := Configuration{
 		Real:                    true,
 		Complex:                 true,
@@ -26,9 +22,23 @@ func Create(size int64, config *Configuration) (*Matrix, error) {
 		config = &defaultConfig
 	}
 
+	if config.TiesMultiplier <= 0 {
+		config.TiesMultiplier = 5
+	}
 	if config.DefaultPartition == DEFAULT_PARTITION {
 		config.DefaultPartition = AUTO_PARTITION
 	}
+	if config.PrinterWidth <= 0 {
+		config.PrinterWidth = 80
+	}
+}
+
+func Create(size int64, config *Configuration) (*Matrix, error) {
+	if size <= 0 {
+		return nil, fmt.Errorf("invalid size: %d", size)
+	}
+
+	config = checkConfig(config)
 
 	matrixSize := size + 1 // 1-based indexing
 
