@@ -495,7 +495,7 @@ func main() {
 	absThreshold := flag.Float64("a", 0.0, "Use x as absolute threshold")
 	printLimit := flag.Int("n", 9, "Print first n terms of solution vector")
 	iterations := flag.Int("i", 1, "Repeat build/factor/solve n times")
-	columnAsRHS := flag.Bool("b", false, "Use n'th column of matrix as b in Ax=b")
+	columnAsRHS := flag.Int("b", 1, "Use n'th column of matrix as b in Ax=b")
 	flag.Parse()
 
 	args := flag.Args()
@@ -509,11 +509,14 @@ func main() {
 	a.solutionOnly = *solutionOnly
 	a.printLimit = *printLimit
 	a.iterations = *iterations
-	a.useColumnAsRHS = bool(*columnAsRHS)
+
+	if *columnAsRHS > 0 {
+		a.useColumnAsRHS = true
+		a.columnAsRHS = int64(*columnAsRHS)
+	}
 
 	if !a.solutionOnly {
-		// fmt.Printf("Sparse1.4\nCopyright (c) 2003, Kenneth S. Kundert.\nAll rights reserved.\n")
-		fmt.Printf("Sparse golang\nCopyright (c) 2025, Robert Sungwook Shin\n\n")
+		fmt.Printf("Sparse Go\nCopyright (c) 2025, Robert Sungwook Shin\n\n")
 	}
 
 	if err := a.readMatrixFromFile(args[0]); err != nil {
