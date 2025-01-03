@@ -16,6 +16,7 @@ func main() {
 
 	annotate := 0
 	separatedComplexVectors := false
+	defaultPartition := sparse.AUTO_PARTITION
 
 	config := &sparse.Configuration{
 		Real:                    true,
@@ -25,7 +26,7 @@ func main() {
 		Translate:               true,
 		ModifiedNodal:           true,
 		TiesMultiplier:          5,
-		DefaultPartition:        sparse.DEFAULT_PARTITION,
+		DefaultPartition:        defaultPartition,
 		PrinterWidth:            140,
 		Annotate:                annotate,
 	}

@@ -3,12 +3,10 @@ package sparse
 const (
 	SLACK float64 = 1e4
 
+	DEFAULT_PARTITION  int = 0
 	DIRECT_PARTITION   int = 1
 	INDIRECT_PARTITION int = 2
 	AUTO_PARTITION     int = 3
-
-	// DEFAULT_PARTITION int = 0
-	DEFAULT_PARTITION int = AUTO_PARTITION
 )
 
 // Replace spConfig

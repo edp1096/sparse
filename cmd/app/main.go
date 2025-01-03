@@ -23,6 +23,7 @@ var (
 	pseudoCondition         = true
 	determinant             = true
 	multiplication          = true
+	defaultPartition        = sparse.AUTO_PARTITION
 )
 
 type App struct {
@@ -133,6 +134,7 @@ func (a *App) readMatrixFromFile(filename string) error {
 		PseudoCondition:         pseudoCondition,
 		Determinant:             determinant,
 		Multiplication:          multiplication,
+		DefaultPartition:        defaultPartition,
 		TiesMultiplier:          5,
 		PrinterWidth:            140,
 		Annotate:                annotate,

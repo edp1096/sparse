@@ -17,12 +17,17 @@ func Create(size int64, config *Configuration) (*Matrix, error) {
 		Translate:               true,
 		ModifiedNodal:           true,
 		TiesMultiplier:          5,
+		DefaultPartition:        AUTO_PARTITION,
 		PrinterWidth:            80,
 		Annotate:                0,
 	}
 
 	if config == nil {
 		config = &defaultConfig
+	}
+
+	if config.DefaultPartition == DEFAULT_PARTITION {
+		config.DefaultPartition = AUTO_PARTITION
 	}
 
 	matrixSize := size + 1 // 1-based indexing
