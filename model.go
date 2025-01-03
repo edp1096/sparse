@@ -24,7 +24,7 @@ type Configuration struct {
 	Delete            bool // Not use
 	Strip             bool // Not use
 	ModifiedNodal     bool
-	QuadElement       bool // Not use. maybe never do this: getAdmittance
+	QuadElement       bool // Not use, regardless getAdmittance, getQuad using
 	Transpose         bool // Flag for transpose job
 	Scaling           bool // Not use
 	Documentation     bool // Not use. fortran
