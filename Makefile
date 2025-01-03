@@ -1,7 +1,7 @@
-.PHONY: default all app factor1 solve1 solve2 ac op clean
+.PHONY: default all app factor1 solve1 solve2 op tran1 tran2 ac1 clean
 
 default: all
-all: app factor1 solve1 solve2 ac op
+all: app factor1 solve1 solve2 op tran1 tran2 ac1
 
 BINARY_DIR := bin
 
@@ -17,10 +17,16 @@ solve1:
 solve2:  
 	go build -o $(BINARY_DIR)/ ./cmd/$@
 
-ac:
+op:
 	go build -o $(BINARY_DIR)/ ./cmd/$@
 
-op:
+tran1:
+	go build -o $(BINARY_DIR)/ ./cmd/$@
+
+tran2:
+	go build -o $(BINARY_DIR)/ ./cmd/$@
+
+ac1:
 	go build -o $(BINARY_DIR)/ ./cmd/$@
 
 clean:

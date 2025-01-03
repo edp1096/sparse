@@ -59,13 +59,13 @@ func main() {
 
 	/* Perform AC analysis over a range of frequencies. */
 	// for f := 0.0; f <= 100000.0; f += 1000.0 {
-	for f := 0.0; f <= 2000.0; f += 1000.0 {
+	for f := 0.0; f <= 2000.0; f += 100.0 {
 		omega := 2.0 * math.Pi * f
 
 		A.Clear()
-		stamps[0].AddComplexQuad(1.0/50.0, 1e-6*omega)
+		stamps[0].AddComplexQuad(1.0/50.0, 10e-6*omega)
 		stamps[1].AddRealQuad(1.0 / 200.0)
-		stamps[2].AddComplexQuad(1.0/50.0, 1e-6*omega)
+		stamps[2].AddComplexQuad(1.0/50.0, 10e-6*omega)
 
 		err = A.Factor()
 		if err != nil {
@@ -86,7 +86,10 @@ func main() {
 			}
 			magnitude = math.Sqrt(x[4]*x[4] + x[5]*x[5])
 		}
-		fmt.Printf("f = %f, h = %f\n", f, magnitude)
+
+		db := 20 * math.Log10(magnitude)
+
+		fmt.Printf("f = %04.0f Hz, h = %.6f, Gain = %.2f dB\n", f, magnitude, db)
 	}
 
 	A.Destroy()
