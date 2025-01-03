@@ -381,12 +381,16 @@ func (a *App) solve() error {
 		limit = int64(a.printLimit)
 	}
 	if !a.matrix.Complex {
-		fmt.Println("\nSolution:")
+		if !a.solutionOnly {
+			fmt.Println("Solution:")
+		}
 		for i := int64(1); i <= limit; i++ {
 			fmt.Printf("%-16.9g\n", a.solution[i])
 		}
 	} else {
-		fmt.Println("\nComplex solution:")
+		if !a.solutionOnly {
+			fmt.Println("Complex solution:")
+		}
 		if a.matrix.Config.SeparatedComplexVectors {
 			for i := int64(1); i <= limit; i++ {
 				fmt.Printf("%-16.9g   %-.9g j\n", a.solution[i], a.isolution[i])
@@ -515,9 +519,7 @@ func main() {
 		a.columnAsRHS = int64(*columnAsRHS)
 	}
 
-	if !a.solutionOnly {
-		fmt.Printf("Sparse Go\nCopyright (c) 2025, Robert Sungwook Shin\n\n")
-	}
+	fmt.Printf("Sparse Go\nCopyright (c) 2025, Robert Sungwook Shin\n\n")
 
 	if err := a.readMatrixFromFile(args[0]); err != nil {
 		fmt.Printf("%s: %v\n", filepath.Base(os.Args[0]), err)
