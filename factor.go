@@ -107,37 +107,60 @@ func (m *Matrix) Factor() error {
 
 	m.Diags[1].Real = 1.0 / m.Diags[1].Real
 
-	// factorization
 	for step := int64(2); step <= m.Size; step++ {
-		for element := m.FirstInCol[step]; element != nil; element = element.NextInCol {
-			m.Intermediate[element.Row] = element.Real
-		}
-
-		for column := m.FirstInCol[step]; column != nil && column.Row < step; column = column.NextInCol {
-			element := m.Diags[column.Row]
-			if element == nil {
-				continue
+		if m.DoRealDirect[step] {
+			// factorization - Direct
+			for element := m.FirstInCol[step]; element != nil; element = element.NextInCol {
+				m.Intermediate[element.Row] = element.Real
 			}
 
-			mult := m.Intermediate[column.Row] * element.Real
-			m.Intermediate[column.Row] = mult
-
-			for element = element.NextInCol; element != nil; element = element.NextInCol {
-				m.Intermediate[element.Row] -= mult * element.Real
+			pColumn := m.FirstInCol[step]
+			for pColumn != nil && pColumn.Row < step {
+				element := m.Diags[pColumn.Row]
+				pColumn.Real = m.Intermediate[pColumn.Row] * element.Real
+				for element = element.NextInCol; element != nil; element = element.NextInCol {
+					m.Intermediate[element.Row] -= pColumn.Real * element.Real
+				}
+				pColumn = pColumn.NextInCol
 			}
-		}
 
-		for element := m.Diags[step].NextInCol; element != nil; element = element.NextInCol {
-			element.Real = m.Intermediate[element.Row]
-		}
+			for element := m.Diags[step].NextInCol; element != nil; element = element.NextInCol {
+				element.Real = m.Intermediate[element.Row]
+			}
 
-		if m.Intermediate[step] == 0.0 {
-			m.SingularRow = step
-			m.SingularCol = step
-			return fmt.Errorf("zero pivot at step %d", step)
-		}
+			if m.Intermediate[step] == 0.0 {
+				return fmt.Errorf("zero pivot at step %d", step)
+			}
+			m.Diags[step].Real = 1.0 / m.Intermediate[step]
+		} else {
+			// factorization - Indirect
+			dest := make([]*float64, m.Size+1)
 
-		m.Diags[step].Real = 1.0 / m.Intermediate[step]
+			for element := m.FirstInCol[step]; element != nil; element = element.NextInCol {
+				dest[element.Row] = &element.Real
+			}
+
+			for column := m.FirstInCol[step]; column != nil && column.Row < step; column = column.NextInCol {
+				diag := m.Diags[column.Row]
+				if diag == nil {
+					continue
+				}
+
+				pColReal := *dest[column.Row] * diag.Real
+				*dest[column.Row] = pColReal
+				for element := diag.NextInCol; element != nil; element = element.NextInCol {
+					*dest[element.Row] -= pColReal * element.Real
+				}
+			}
+
+			diag := m.Diags[step]
+			if diag == nil || diag.Real == 0.0 {
+				m.SingularRow = step
+				m.SingularCol = step
+				return fmt.Errorf("zero pivot at step %d", step)
+			}
+			diag.Real = 1.0 / diag.Real
+		}
 	}
 
 	m.Factored = true

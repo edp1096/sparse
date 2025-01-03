@@ -285,18 +285,15 @@ func (a *App) solve() error {
 		a.infNorm = a.matrix.Norm()
 	}
 
-	orderFactorStart := time.Now()
+	initialFactorStart := time.Now()
 	if err := a.matrix.OrderAndFactor(a.rhs, a.relThreshold, a.absThreshold, true); err != nil {
 		return fmt.Errorf("initial order and factor failed: %v", err)
 	}
 
-	initialFactorTime := time.Since(orderFactorStart).Seconds()
-
-	partitionStart := time.Now()
-	a.matrix.Partition(sparse.DEFAULT_PARTITION)
-	partitionTime := time.Since(partitionStart).Seconds()
+	initialFactorTime := time.Since(initialFactorStart).Seconds()
 
 	var err error
+	solveStart := time.Now()
 	if a.matrix.Complex {
 		if a.matrix.Config.Transpose {
 			a.solution, a.isolution, err = a.matrix.SolveComplexTransposed(a.rhs, a.irhs)
@@ -316,6 +313,7 @@ func (a *App) solve() error {
 			return fmt.Errorf("initial solve failed: %v", err)
 		}
 	}
+	a.solveTime += time.Since(solveStart).Seconds()
 
 	if !a.solutionOnly && a.matrix.Config.Stability {
 		a.largestAfter = a.matrix.LargestElement()
@@ -324,15 +322,56 @@ func (a *App) solve() error {
 
 	var conditionTime float64
 	if !a.solutionOnly && a.matrix.Config.Condition {
+		conditionStart := time.Now()
 		a.conditionNumber, err = a.matrix.Condition(a.infNorm)
 		if err != nil {
 			fmt.Printf("initial condition number failed: %v", err)
 		}
-		conditionTime = time.Since(partitionStart).Seconds()
+		conditionTime = time.Since(conditionStart).Seconds()
 	}
 
 	if !a.solutionOnly && a.matrix.Config.PseudoCondition {
 		a.psudoCondition = a.matrix.PseudoCondition()
+	}
+
+	var partitionTime float64
+	if !a.solutionOnly {
+		partitionStart := time.Now()
+		a.matrix.Partition(sparse.DEFAULT_PARTITION)
+		partitionTime = time.Since(partitionStart).Seconds()
+	}
+
+	for i := 1; i <= a.iterations; i++ {
+		buildStart := time.Now()
+		if err = a.matrix.Initialize(); err != nil {
+			return fmt.Errorf("initialize failed: %v", err)
+		}
+		a.buildTime += time.Since(buildStart).Seconds()
+
+		factorStart := time.Now()
+		if err = a.matrix.Factor(); err != nil {
+			return fmt.Errorf("factor failed: %v", err)
+		}
+		a.factorTime += time.Since(factorStart).Seconds()
+
+		solveStart := time.Now()
+		if a.matrix.Complex {
+			if a.matrix.Config.Transpose {
+				a.solution, a.isolution, err = a.matrix.SolveComplexTransposed(a.rhs, a.irhs)
+			} else {
+				a.solution, a.isolution, err = a.matrix.SolveComplex(a.rhs, a.irhs)
+			}
+		} else {
+			if a.matrix.Config.Transpose {
+				a.solution, err = a.matrix.SolveTransposed(a.rhs)
+			} else {
+				a.solution, err = a.matrix.Solve(a.rhs)
+			}
+		}
+		a.solveTime += time.Since(solveStart).Seconds()
+		if err != nil {
+			return fmt.Errorf("solve failed: %v", err)
+		}
 	}
 
 	limit := a.matrix.Size
@@ -348,15 +387,6 @@ func (a *App) solve() error {
 			fmt.Printf("Solution list truncated.\n")
 		}
 	} else {
-		if a.matrix.Config.Transpose {
-			a.solution, a.isolution, err = a.matrix.SolveComplexTransposed(a.rhs, a.irhs)
-		} else {
-			a.solution, a.isolution, err = a.matrix.SolveComplex(a.rhs, a.irhs)
-		}
-		if err != nil {
-			return fmt.Errorf("initial complex solve failed: %v", err)
-		}
-
 		fmt.Println("\nComplex solution:")
 		if a.matrix.Config.SeparatedComplexVectors {
 			for i := int64(1); i <= limit; i++ {
@@ -447,12 +477,12 @@ func (a *App) solve() error {
 	return nil
 }
 
-func (t *App) printResourceUsage() {
+func (a *App) printResourceUsage() {
 	var m runtime.MemStats
 	runtime.ReadMemStats(&m)
 
 	fmt.Printf("\nAggregate resource usage:\n")
-	fmt.Printf("    Time required = %.4f seconds.\n", time.Since(t.startTime).Seconds())
+	fmt.Printf("    Time required = %.4f seconds.\n", time.Since(a.startTime).Seconds())
 	fmt.Printf("    Heap memory used = %d kBytes\n", m.HeapAlloc/1024)
 	fmt.Printf("    Total memory from OS = %d kBytes\n\n", m.Sys/1024)
 }
@@ -472,40 +502,40 @@ func main() {
 		os.Exit(1)
 	}
 
-	app := InitApp()
-	app.filename = args[0]
-	app.solutionOnly = *solutionOnly
-	app.printLimit = *printLimit
-	app.iterations = *iterations
-	app.useColumnAsRHS = bool(*columnAsRHS)
+	a := InitApp()
+	a.filename = args[0]
+	a.solutionOnly = *solutionOnly
+	a.printLimit = *printLimit
+	a.iterations = *iterations
+	a.useColumnAsRHS = bool(*columnAsRHS)
 
-	if !app.solutionOnly {
+	if !a.solutionOnly {
 		// fmt.Printf("Sparse1.4\nCopyright (c) 2003, Kenneth S. Kundert.\nAll rights reserved.\n")
 		fmt.Printf("Sparse golang\nCopyright (c) 2025, Robert Sungwook Shin\n\n")
 	}
 
-	if err := app.readMatrixFromFile(args[0]); err != nil {
+	if err := a.readMatrixFromFile(args[0]); err != nil {
 		fmt.Printf("%s: %v\n", filepath.Base(os.Args[0]), err)
 		os.Exit(1)
 	}
 
-	app.matrix.RelThreshold = *relThreshold
-	app.matrix.AbsThreshold = *absThreshold
+	a.matrix.RelThreshold = *relThreshold
+	a.matrix.AbsThreshold = *absThreshold
 
-	app.matrix.Initialize()
+	a.matrix.Initialize()
 
-	if app.matrix.Config.ModifiedNodal {
-		app.matrix.MNAPreorder()
+	if a.matrix.Config.ModifiedNodal {
+		a.matrix.MNAPreorder()
 	}
 
-	if err := app.solve(); err != nil {
+	if err := a.solve(); err != nil {
 		fmt.Printf("%s: %v\n", filepath.Base(os.Args[0]), err)
 		os.Exit(1)
 	}
 
-	if !app.solutionOnly {
-		app.printResourceUsage()
+	if !a.solutionOnly {
+		a.printResourceUsage()
 	}
 
-	app.matrix.Destroy()
+	a.matrix.Destroy()
 }

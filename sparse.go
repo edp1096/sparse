@@ -85,9 +85,10 @@ func (m *Matrix) Initialize() error {
 				element.Imag = 0.0
 			} else {
 				element.Real = element.InitInfo.Real
-				if m.Complex {
-					element.Imag = element.InitInfo.Imag
-				}
+				element.Imag = element.InitInfo.Imag
+				// if m.Complex {
+				// 	element.Imag = element.InitInfo.Imag
+				// }
 			}
 			element = element.NextInCol
 		}
