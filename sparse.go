@@ -137,6 +137,9 @@ func (m *Matrix) Clear() {
 }
 
 func (m *Matrix) Destroy() {
+	m.DoRealDirect = nil
+	m.DoComplexDirect = nil
+
 	m.IntToExtColMap = nil
 	m.IntToExtRowMap = nil
 	m.ExtToIntColMap = nil
