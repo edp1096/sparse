@@ -101,24 +101,6 @@ func (m *Matrix) Initialize() error {
 	return nil
 }
 
-// func (m *Matrix) ClearNotUse() {
-// 	m.Elements = 0
-// 	m.Fillins = 0
-
-// 	matrixSize := m.Size + 1
-
-// 	m.Diags = make([]*Element, matrixSize+1)
-// 	m.FirstInRow = make([]*Element, matrixSize+1)
-// 	m.FirstInCol = make([]*Element, matrixSize+1)
-// 	m.Intermediate = make([]float64, matrixSize+1)
-// 	if m.Complex {
-// 		m.Intermediate = make([]float64, matrixSize*2)
-// 	}
-// 	m.MarkowitzRow = make([]int64, matrixSize+1)
-// 	m.MarkowitzCol = make([]int64, matrixSize+1)
-// 	m.MarkowitzProd = make([]int64, matrixSize+1)
-// }
-
 func (m *Matrix) Clear() {
 	for i := m.Size; i > 0; i-- {
 		element := m.FirstInCol[i]
