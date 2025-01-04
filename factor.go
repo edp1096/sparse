@@ -5,6 +5,8 @@ import (
 )
 
 func (m *Matrix) OrderAndFactor(rhs []float64, relThreshold, absThreshold float64, diagPivoting bool) error {
+	var err error
+
 	if relThreshold <= 0.0 || relThreshold > 1.0 {
 		relThreshold = m.RelThreshold
 	}
@@ -44,6 +46,12 @@ func (m *Matrix) OrderAndFactor(rhs []float64, relThreshold, absThreshold float6
 		}
 	} else {
 		step = 1
+		if !m.InternalVectorsAllocated {
+			err = m.CreateInternalVectors()
+			if err != nil {
+				return err
+			}
+		}
 		if !m.RowsLinked {
 			m.LinkRows()
 		}

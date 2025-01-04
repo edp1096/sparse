@@ -40,7 +40,7 @@ func checkConfig(config *Configuration) *Configuration {
 }
 
 func Create(size int64, config *Configuration) (*Matrix, error) {
-	if size <= 0 {
+	if size < 0 || (size == 0 && !config.Expandable) {
 		return nil, fmt.Errorf("invalid size: %d", size)
 	}
 
@@ -51,6 +51,7 @@ func Create(size int64, config *Configuration) (*Matrix, error) {
 	m := &Matrix{
 		Config:          *config,
 		Size:            size,
+		ExtSize:         size,
 		Complex:         config.Complex,
 		DoRealDirect:    make([]bool, matrixSize+1),
 		DoComplexDirect: make([]bool, matrixSize+1),
@@ -293,13 +294,26 @@ func (m *Matrix) GetElement(row, col int64) *Element {
 	}
 
 	internalRow, internalCol := row, col
-	if m.Config.Translate {
-		if err := m.Translate(&internalRow, &internalCol); err != nil {
+	switch {
+	case m.Config.Translate:
+		err := m.Translate(&internalRow, &internalCol)
+		if err != nil {
 			return nil
 		}
-	} else {
+	default:
 		if row > m.Size || col > m.Size {
-			return nil
+			if m.Config.Expandable {
+				newSize := max(row, col)
+				err := m.EnlargeMatrix(newSize)
+				if err != nil {
+					return nil
+				}
+			} else {
+				if m.Reordered {
+					panic("Set Translate to add elements to a reordered matrix")
+				}
+				return nil
+			}
 		}
 	}
 
@@ -356,11 +370,20 @@ func (m *Matrix) LinkRows() {
 }
 
 func (m *Matrix) Translate(row, col *int64) error {
+	var err error
 	var intRow, intCol, extRow, extCol int64
 
 	extRow, extCol = *row, *col
 
-	// Translate external row number to internal row number
+	if extRow > m.ExtSize || extCol > m.ExtSize {
+		err = m.ExpandTranslationArrays(max(extRow, extCol))
+		if err != nil {
+			return fmt.Errorf("failed to expand translation arrays: %v", err)
+		}
+		m.ExtSize = max(extRow, extCol)
+	}
+
+	// Translate row number: external to internal
 	intRow = m.ExtToIntRowMap[extRow]
 	if intRow == -1 {
 		m.CurrentSize++
@@ -368,15 +391,21 @@ func (m *Matrix) Translate(row, col *int64) error {
 		m.ExtToIntColMap[extRow] = m.CurrentSize
 		intRow = m.CurrentSize
 
-		if !m.Config.Expandable && intRow > m.Size {
-			return fmt.Errorf("matrix size fixed")
+		if intRow > m.Size {
+			if !m.Config.Expandable {
+				return fmt.Errorf("matrix size fixed")
+			}
+			err = m.EnlargeMatrix(intRow)
+			if err != nil {
+				return fmt.Errorf("failed to enlarge matrix: %v", err)
+			}
 		}
 
 		m.IntToExtRowMap[intRow] = extRow
 		m.IntToExtColMap[intRow] = extRow
 	}
 
-	// Translate external column number to internal column number
+	// Translate column number: external to internal
 	intCol = m.ExtToIntColMap[extCol]
 	if intCol == -1 {
 		m.CurrentSize++
@@ -384,8 +413,14 @@ func (m *Matrix) Translate(row, col *int64) error {
 		m.ExtToIntColMap[extCol] = m.CurrentSize
 		intCol = m.CurrentSize
 
-		if !m.Config.Expandable && intCol > m.Size {
-			return fmt.Errorf("matrix size fixed")
+		if intCol > m.Size {
+			if !m.Config.Expandable {
+				return fmt.Errorf("matrix size fixed")
+			}
+			err = m.EnlargeMatrix(intCol)
+			if err != nil {
+				return fmt.Errorf("failed to enlarge matrix: %v", err)
+			}
 		}
 
 		m.IntToExtRowMap[intCol] = extCol
@@ -398,8 +433,102 @@ func (m *Matrix) Translate(row, col *int64) error {
 	return nil
 }
 
+func (m *Matrix) EnlargeMatrix(newSize int64) error {
+	if newSize <= m.Size {
+		return nil
+	}
+
+	m.Size = newSize
+	newSize1BaseIndex := newSize + 1
+
+	newDiags := make([]*Element, newSize1BaseIndex)
+	newFirstInRow := make([]*Element, newSize1BaseIndex)
+	newFirstInCol := make([]*Element, newSize1BaseIndex)
+	newIntToExtColMap := make([]int64, newSize1BaseIndex)
+	newIntToExtRowMap := make([]int64, newSize1BaseIndex)
+
+	copy(newDiags, m.Diags)
+	copy(newFirstInRow, m.FirstInRow)
+	copy(newFirstInCol, m.FirstInCol)
+	copy(newIntToExtColMap, m.IntToExtColMap)
+	copy(newIntToExtRowMap, m.IntToExtRowMap)
+
+	for i := int64(len(m.IntToExtColMap)); i < newSize1BaseIndex; i++ {
+		newIntToExtColMap[i] = i
+		newIntToExtRowMap[i] = i
+	}
+
+	m.Diags = newDiags
+	m.FirstInRow = newFirstInRow
+	m.FirstInCol = newFirstInCol
+	m.IntToExtColMap = newIntToExtColMap
+	m.IntToExtRowMap = newIntToExtRowMap
+
+	m.MarkowitzRow = nil
+	m.MarkowitzCol = nil
+	m.MarkowitzProd = nil
+	m.DoRealDirect = nil
+	m.DoComplexDirect = nil
+	m.Intermediate = nil
+	m.InternalVectorsAllocated = false
+
+	// Use at OrderAndFactor insetead of this
+	// if err := m.CreateInternalVectors(); err != nil {
+	// 	return fmt.Errorf("failed to create internal vectors: %v", err)
+	// }
+
+	return nil
+}
+
+func (m *Matrix) ExpandTranslationArrays(newSize int64) error {
+	if newSize <= m.ExtSize {
+		return nil
+	}
+
+	m.ExtSize = newSize
+
+	newExtToIntRowMap := make([]int64, newSize+1)
+	newExtToIntColMap := make([]int64, newSize+1)
+
+	copy(newExtToIntRowMap, m.ExtToIntRowMap)
+	copy(newExtToIntColMap, m.ExtToIntColMap)
+
+	for i := int64(len(m.ExtToIntRowMap)); i < (newSize + 1); i++ {
+		newExtToIntRowMap[i] = -1
+		newExtToIntColMap[i] = -1
+	}
+
+	m.ExtToIntRowMap = newExtToIntRowMap
+	m.ExtToIntColMap = newExtToIntColMap
+
+	return nil
+}
+
+func (m *Matrix) CreateInternalVectorsNotUse() error {
+	size := m.Size
+	if m.Complex {
+		m.Intermediate = make([]float64, 2*(size+1))
+	} else {
+		m.Intermediate = make([]float64, size+1)
+	}
+
+	m.InternalVectorsAllocated = true
+	return nil
+}
+
 func (m *Matrix) CreateInternalVectors() error {
 	size := m.Size
+
+	m.MarkowitzRow = make([]int64, size+1)
+	m.MarkowitzCol = make([]int64, size+1)
+	m.MarkowitzProd = make([]int64, size+2)
+
+	if m.Complex {
+		m.DoComplexDirect = make([]bool, size+1)
+	} else {
+		m.DoRealDirect = make([]bool, size+1)
+	}
+
 	if m.Complex {
 		m.Intermediate = make([]float64, 2*(size+1))
 	} else {

@@ -54,6 +54,7 @@ type Matrix struct {
 	Config Configuration
 
 	Size        int64 // Matrix size
+	ExtSize     int64 // Matrix external size
 	CurrentSize int64 // Matrix size after translate
 	Complex     bool  // Matrix is complex
 
@@ -98,7 +99,6 @@ type Matrix struct {
 	// Internal vectors allocation state - not use
 	InternalVectorsAllocated bool
 
-	ExtSize        int64   // Matrix size when translate is on
 	IntToExtRowMap []int64 // Internal->External rows map [1...Size]
 	IntToExtColMap []int64 // Internal->External columns map [1...Size]
 	ExtToIntRowMap []int64 // External->Internal rows map [1...Size]

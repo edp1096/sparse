@@ -18,6 +18,7 @@ import (
 var (
 	annotate                = 0
 	separatedComplexVectors = false
+	translate               = true
 	stability               = true
 	condition               = true
 	pseudoCondition         = true
@@ -126,7 +127,7 @@ func (a *App) readMatrixFromFile(filename string) error {
 		Complex:                 isComplex,
 		SeparatedComplexVectors: separatedComplexVectors,
 		Expandable:              true,
-		Translate:               true,
+		Translate:               translate,
 		Initialize:              true,
 		ModifiedNodal:           true,
 		Stability:               stability,
@@ -140,7 +141,8 @@ func (a *App) readMatrixFromFile(filename string) error {
 		Annotate:                annotate,
 	}
 
-	a.matrix, err = sparse.Create(size, config)
+	// a.matrix, err = sparse.Create(size, config)
+	a.matrix, err = sparse.Create(0, config)
 	if err != nil {
 		return fmt.Errorf("failed to create matrix: %v", err)
 	}
@@ -195,6 +197,11 @@ func (a *App) readMatrixFromFile(filename string) error {
 				real, err = strconv.ParseFloat(fields[2], 64)
 				if err != nil {
 					continue
+				}
+
+				if row > a.matrix.Size || col > a.matrix.Size {
+					size = max(row, col)
+					a.EnlargeVectors(size, false)
 				}
 
 				element := a.matrix.GetElement(row, col)
@@ -377,6 +384,10 @@ func (a *App) solve() error {
 	}
 
 	limit := a.matrix.Size
+	if a.matrix.Config.Translate {
+		limit = a.matrix.ExtSize
+	}
+
 	if !a.solutionOnly && a.printLimit > 0 && int64(a.printLimit) < limit {
 		limit = int64(a.printLimit)
 	}
@@ -491,6 +502,68 @@ func (a *App) printResourceUsage() {
 	fmt.Printf("    Time required = %.4f seconds.\n", time.Since(a.startTime).Seconds())
 	fmt.Printf("    Heap memory used = %d kBytes\n", m.HeapAlloc/1024)
 	fmt.Printf("    Total memory from OS = %d kBytes\n\n", m.Sys/1024)
+}
+
+func (a *App) EnlargeVectors(newSize int64, clear bool) {
+	prevSize := int64(len(a.rhs) - 1)
+	if newSize <= prevSize {
+		return
+	}
+
+	var newRHS, newIRHS, newSolution, newISolution []float64
+
+	newRHS = make([]float64, newSize+1)
+	newSolution = make([]float64, newSize+1)
+
+	if a.matrix.Complex {
+		if a.matrix.Config.SeparatedComplexVectors {
+			newIRHS = make([]float64, newSize+1)
+			newISolution = make([]float64, newSize+1)
+
+			if !clear && len(a.irhs) > 0 {
+				copy(newIRHS, a.irhs)
+			}
+			if !clear && len(a.isolution) > 0 {
+				copy(newISolution, a.isolution)
+			}
+		} else {
+			newRHS = make([]float64, 2*(newSize+1))
+			newSolution = make([]float64, 2*(newSize+1))
+		}
+
+		a.irhs = newIRHS
+		a.isolution = newISolution
+	}
+
+	if !clear {
+		copy(newRHS, a.rhs)
+		copy(newSolution, a.solution)
+	}
+
+	startClear := prevSize
+	if clear {
+		startClear = 0
+	}
+
+	if a.matrix.Complex && !a.matrix.Config.SeparatedComplexVectors {
+		for i := startClear + 1; i <= newSize; i++ {
+			idx := i * 2
+			newRHS[idx], newRHS[idx+1] = 0.0, 0.0
+			newSolution[idx], newSolution[idx+1] = 0.0, 0.0
+		}
+	} else {
+		for i := startClear + 1; i <= newSize; i++ {
+			newRHS[i] = 0.0
+			newSolution[i] = 0.0
+			if a.matrix.Complex && a.matrix.Config.SeparatedComplexVectors {
+				a.irhs[i] = 0.0
+				a.isolution[i] = 0.0
+			}
+		}
+	}
+
+	a.rhs = newRHS
+	a.solution = newSolution
 }
 
 func main() {

@@ -72,8 +72,12 @@ func (m *Matrix) Print(printReordered bool, data bool, header bool) {
 		return
 	}
 
-	printOrdToIntRowMap := make([]int64, m.Size+1)
-	printOrdToIntColMap := make([]int64, m.Size+1)
+	top := m.Size
+	if m.Config.Translate {
+		top = m.ExtSize
+	}
+	printOrdToIntRowMap := make([]int64, top+1)
+	printOrdToIntColMap := make([]int64, top+1)
 
 	for i := int64(1); i <= m.Size; i++ {
 		printOrdToIntRowMap[m.IntToExtRowMap[i]] = i
@@ -81,8 +85,8 @@ func (m *Matrix) Print(printReordered bool, data bool, header bool) {
 	}
 
 	compressMap := func(cmap []int64) []int64 {
-		compressed := make([]int64, 1, m.Size+1)
-		for i := int64(1); i <= m.Size; i++ {
+		compressed := make([]int64, 1, top)
+		for i := int64(1); i <= top; i++ {
 			if cmap[i] != 0 {
 				compressed = append(compressed, cmap[i])
 			}
@@ -227,7 +231,7 @@ func (m *Matrix) Print(printReordered bool, data bool, header bool) {
 	}
 
 	if header {
-		stats := m.calculateStatistics()
+		stats := m.calculateStatistics(top)
 		fmt.Printf("\nLargest element in matrix = %-1.4g.\n", stats.largestElement)
 		fmt.Printf("Smallest element in matrix = %-1.4g.\n", stats.smallestElement)
 
@@ -256,7 +260,7 @@ type matrixStats struct {
 	elementCount    int64
 }
 
-func (matrix *Matrix) calculateStatistics() matrixStats {
+func (matrix *Matrix) calculateStatistics(top int64) matrixStats {
 	stats := matrixStats{
 		smallestElement: math.MaxFloat64,
 		smallestDiag:    math.MaxFloat64,
@@ -268,17 +272,21 @@ func (matrix *Matrix) calculateStatistics() matrixStats {
 		return stats
 	}
 
-	printOrdToIntRowMap := make([]int64, matrix.Size+1)
-	printOrdToIntColMap := make([]int64, matrix.Size+1)
+	// printOrdToIntRowMap := make([]int64, matrix.Size+1)
+	// printOrdToIntColMap := make([]int64, matrix.Size+1)
+	printOrdToIntRowMap := make([]int64, top+1)
+	printOrdToIntColMap := make([]int64, top+1)
 
 	for i := int64(1); i <= matrix.Size; i++ {
 		printOrdToIntRowMap[matrix.IntToExtRowMap[i]] = i
 		printOrdToIntColMap[matrix.IntToExtColMap[i]] = i
 	}
 
-	for i := int64(1); i <= matrix.Size; i++ {
+	// for i := int64(1); i <= matrix.Size; i++ {
+	for i := int64(1); i <= top; i++ {
 		row := printOrdToIntRowMap[i]
-		for col := int64(1); col <= matrix.Size; col++ {
+		// for col := int64(1); col <= matrix.Size; col++ {
+		for col := int64(1); col <= top; col++ {
 			actualCol := printOrdToIntColMap[col]
 
 			element := matrix.FirstInCol[actualCol]

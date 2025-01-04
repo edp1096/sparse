@@ -8,4 +8,4 @@
 
 ## TODO
 * app
-    * Parse matXY.mat
+    * mat0, matrix4000 create with size 0 -> Factor -> panic
