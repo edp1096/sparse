@@ -141,8 +141,8 @@ func (a *App) readMatrixFromFile(filename string) error {
 		Annotate:                annotate,
 	}
 
-	// a.matrix, err = sparse.Create(size, config)
-	a.matrix, err = sparse.Create(0, config)
+	a.matrix, err = sparse.Create(size, config)
+	// a.matrix, err = sparse.Create(0, config)
 	if err != nil {
 		return fmt.Errorf("failed to create matrix: %v", err)
 	}

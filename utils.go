@@ -723,7 +723,7 @@ func (m *Matrix) Multiply(solution []float64, isolution []float64) ([]float64, [
 	rhs := make([]float64, top+1)
 	var irhs []float64
 	if m.Complex && m.Config.SeparatedComplexVectors {
-		irhs = make([]float64, m.Size+1)
+		// irhs = make([]float64, m.Size+1)
 		irhs = make([]float64, top+1)
 	}
 

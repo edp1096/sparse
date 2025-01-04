@@ -96,7 +96,6 @@ type Matrix struct {
 	PivotsOriginalCol    int64 // Original pivot column number
 	PivotSelectionMethod byte  // pivot choose method ('s', 'q', 'd', 'e')
 
-	// Internal vectors allocation state - not use
 	InternalVectorsAllocated bool
 
 	IntToExtRowMap []int64 // Internal->External rows map [1...Size]
