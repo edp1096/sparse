@@ -16,7 +16,7 @@ import (
 )
 
 var (
-	annotate                = 1
+	annotate                = 0
 	separatedComplexVectors = false
 	translate               = true
 	stability               = true

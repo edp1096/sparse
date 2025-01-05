@@ -22,19 +22,31 @@ func (m *Matrix) WriteStatus(step int64) {
 
 	// Markowitz information
 	fmt.Printf("MarkowitzRow     = ")
+	MarkowitzRowLen := int64(len(m.MarkowitzRow))
 	for i := int64(1); i <= m.Size; i++ {
+		if i >= MarkowitzRowLen {
+			break
+		}
 		fmt.Printf("%2d  ", m.MarkowitzRow[i])
 	}
 	fmt.Println()
 
 	fmt.Printf("MarkowitzCol     = ")
+	MarkowitzColLen := int64(len(m.MarkowitzCol))
 	for i := int64(1); i <= m.Size; i++ {
+		if i >= MarkowitzColLen {
+			break
+		}
 		fmt.Printf("%2d  ", m.MarkowitzCol[i])
 	}
 	fmt.Println()
 
 	fmt.Printf("MarkowitzProduct = ")
+	MarkowitzProdLen := int64(len(m.MarkowitzProd))
 	for i := int64(1); i <= m.Size; i++ {
+		if i >= MarkowitzProdLen {
+			break
+		}
 		fmt.Printf("%2d  ", m.MarkowitzProd[i])
 	}
 	fmt.Println()
@@ -43,25 +55,41 @@ func (m *Matrix) WriteStatus(step int64) {
 
 	// Mapping information
 	fmt.Printf("IntToExtRowMap     = ")
+	IntToExtRowMapLen := int64(len(m.IntToExtRowMap))
 	for i := int64(1); i <= m.Size; i++ {
+		if i >= IntToExtRowMapLen {
+			break
+		}
 		fmt.Printf("%2d  ", m.IntToExtRowMap[i])
 	}
 	fmt.Println()
 
 	fmt.Printf("IntToExtColMap     = ")
+	IntToExtColMapLen := int64(len(m.IntToExtColMap))
 	for i := int64(1); i <= m.Size; i++ {
+		if i >= IntToExtColMapLen {
+			break
+		}
 		fmt.Printf("%2d  ", m.IntToExtColMap[i])
 	}
 	fmt.Println()
 
 	fmt.Printf("ExtToIntRowMap     = ")
+	ExtToIntRowMapLen := int64(len(m.ExtToIntRowMap))
 	for i := int64(1); i <= m.Size; i++ {
+		if i >= ExtToIntRowMapLen {
+			break
+		}
 		fmt.Printf("%2d  ", m.ExtToIntRowMap[i])
 	}
 	fmt.Println()
 
 	fmt.Printf("ExtToIntColMap     = ")
+	ExtToIntColMapLen := int64(len(m.ExtToIntColMap))
 	for i := int64(1); i <= m.Size; i++ {
+		if i >= ExtToIntColMapLen {
+			break
+		}
 		fmt.Printf("%2d  ", m.ExtToIntColMap[i])
 	}
 	fmt.Printf("\n\n")
