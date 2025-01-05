@@ -1,11 +1,11 @@
-.PHONY: default all app factor1 solve1 solve2 op tran1 tran2 ac1 clean
+.PHONY: default all sparse factor1 solve1 solve2 op tran1 tran2 ac1 clean
 
 default: all
-all: app factor1 solve1 solve2 op tran1 tran2 ac1
+all: sparse factor1 solve1 solve2 op tran1 tran2 ac1
 
 BINARY_DIR := bin
 
-app:
+sparse:
 	go build -o $(BINARY_DIR)/ ./cmd/$@
 
 factor1:

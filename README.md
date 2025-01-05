@@ -8,7 +8,7 @@ make
 ## Run
 ```sh
 cd bin
-./app matrices/mat0
+./sparse matrices/mat0
 ```
 
 ## Source
