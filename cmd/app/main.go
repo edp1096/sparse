@@ -17,7 +17,7 @@ import (
 
 var (
 	annotate                = 1
-	separatedComplexVectors = true
+	separatedComplexVectors = false
 	translate               = true
 	stability               = true
 	condition               = true
@@ -138,7 +138,7 @@ func (a *App) readMatrixFromFile(filename string) error {
 		Multiplication:          multiplication,
 		DefaultPartition:        defaultPartition,
 		TiesMultiplier:          5,
-		PrinterWidth:            140,
+		PrinterWidth:            120,
 		Annotate:                annotate,
 	}
 
@@ -158,6 +158,7 @@ func (a *App) readMatrixFromFile(filename string) error {
 	}
 
 	// RHS_Col
+	a.EnlargeVectors(size, true)
 	rhsCol := int64(1)
 	if a.useColumnAsRHS {
 		rhsCol = min(a.matrix.Size, a.columnAsRHS)
@@ -198,7 +199,7 @@ func (a *App) readMatrixFromFile(filename string) error {
 					continue
 				}
 
-				if row > a.matrix.Size || col > a.matrix.Size {
+				if row > size || col > size {
 					size = max(row, col)
 					a.EnlargeVectors(size, false)
 				}
@@ -239,7 +240,7 @@ func (a *App) readMatrixFromFile(filename string) error {
 		}
 	}
 
-	// RHS vector
+	// Read RHS vector
 	if !a.useColumnAsRHS {
 		if len(rhsValues) > 0 && strings.HasPrefix(rhsValues[0], "Beginning") {
 			rhsValues = rhsValues[1:]

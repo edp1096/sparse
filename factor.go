@@ -46,14 +46,14 @@ func (m *Matrix) OrderAndFactor(rhs []float64, relThreshold, absThreshold float6
 		}
 	} else {
 		step = 1
+		if !m.RowsLinked {
+			m.LinkRows()
+		}
 		if !m.InternalVectorsAllocated {
 			err = m.CreateInternalVectors()
 			if err != nil {
 				return err
 			}
-		}
-		if !m.RowsLinked {
-			m.LinkRows()
 		}
 	}
 

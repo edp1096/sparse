@@ -14,8 +14,8 @@ func (m *Matrix) CountMarkowitz(rhs []float64, step int64) {
 			element = element.NextInRow
 		}
 
+		extRow := m.IntToExtRowMap[i]
 		if rhs != nil {
-			extRow := m.IntToExtRowMap[i]
 			switch {
 			case m.Config.SeparatedComplexVectors:
 				if rhs[extRow] != 0.0 {
