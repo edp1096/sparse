@@ -113,6 +113,8 @@ func (m *Matrix) Factor() error {
 
 	m.Diags[1].Real = 1.0 / m.Diags[1].Real
 
+	matrixSize := m.Size + 1 // 1-based indexing
+
 	for step := int64(2); step <= m.Size; step++ {
 		if m.DoRealDirect[step] {
 			// factorization - Direct
@@ -140,7 +142,7 @@ func (m *Matrix) Factor() error {
 			m.Diags[step].Real = 1.0 / m.Intermediate[step]
 		} else {
 			// factorization - Indirect
-			dest := make([]*float64, m.Size+1)
+			dest := make([]*float64, matrixSize)
 
 			for element := m.FirstInCol[step]; element != nil; element = element.NextInCol {
 				dest[element.Row] = &element.Real
@@ -182,9 +184,11 @@ func (m *Matrix) FactorComplex() error {
 
 	m.complexReciprocal(m.Diags[1])
 
+	matrixSize := m.Size + 1 // 1-based indexing
+
 	for step := int64(2); step <= m.Size; step++ {
 		if m.DoComplexDirect[step] {
-			dest := make([]*Element, m.Size+1)
+			dest := make([]*Element, matrixSize)
 			for i := range dest {
 				dest[i] = &Element{}
 			}
@@ -219,7 +223,7 @@ func (m *Matrix) FactorComplex() error {
 			m.Diags[step].Real = dest[step].Real
 			m.Diags[step].Imag = dest[step].Imag
 		} else {
-			dest := make([]*Element, m.Size+1)
+			dest := make([]*Element, matrixSize)
 			for element := m.FirstInCol[step]; element != nil; element = element.NextInCol {
 				dest[element.Row] = element
 			}

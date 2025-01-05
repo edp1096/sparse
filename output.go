@@ -260,7 +260,7 @@ type matrixStats struct {
 	elementCount    int64
 }
 
-func (matrix *Matrix) calculateStatistics(top int64) matrixStats {
+func (m *Matrix) calculateStatistics(top int64) matrixStats {
 	stats := matrixStats{
 		smallestElement: math.MaxFloat64,
 		smallestDiag:    math.MaxFloat64,
@@ -268,37 +268,34 @@ func (matrix *Matrix) calculateStatistics(top int64) matrixStats {
 
 	elementCount := int64(0)
 
-	if matrix.Size == 0 {
+	if m.Size == 0 {
 		return stats
 	}
 
-	// printOrdToIntRowMap := make([]int64, matrix.Size+1)
-	// printOrdToIntColMap := make([]int64, matrix.Size+1)
 	printOrdToIntRowMap := make([]int64, top+1)
 	printOrdToIntColMap := make([]int64, top+1)
 
-	for i := int64(1); i <= matrix.Size; i++ {
-		printOrdToIntRowMap[matrix.IntToExtRowMap[i]] = i
-		printOrdToIntColMap[matrix.IntToExtColMap[i]] = i
+	for i := int64(1); i <= m.Size; i++ {
+		printOrdToIntRowMap[m.IntToExtRowMap[i]] = i
+		printOrdToIntColMap[m.IntToExtColMap[i]] = i
 	}
 
-	// for i := int64(1); i <= matrix.Size; i++ {
 	for i := int64(1); i <= top; i++ {
 		row := printOrdToIntRowMap[i]
-		// for col := int64(1); col <= matrix.Size; col++ {
+
 		for col := int64(1); col <= top; col++ {
 			actualCol := printOrdToIntColMap[col]
 
-			element := matrix.FirstInCol[actualCol]
+			element := m.FirstInCol[actualCol]
 			for element != nil && element.Row != row {
 				element = element.NextInCol
 			}
 
 			if element != nil {
 				elementCount++
-				magnitude := matrix.elementMag(element)
-				if matrix.Complex {
-					magnitude = matrix.elementMag(element)
+				magnitude := m.elementMag(element)
+				if m.Complex {
+					magnitude = m.elementMag(element)
 				}
 
 				if magnitude > stats.largestElement {

@@ -56,7 +56,8 @@ func main() {
 		vin := Vpeak * math.Sin(radian)
 
 		// RHS
-		b := make([]float64, A.Size+1)
+		matrixSize := A.Size + 1 // 1-based indexing
+		b := make([]float64, matrixSize)
 		b[3] = vin // Voltage source
 
 		err = A.Factor()

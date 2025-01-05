@@ -58,7 +58,8 @@ func main() {
 		vin := Vpeak * math.Abs(math.Sin(radian))
 
 		// RHS
-		b := make([]float64, A.Size+1)
+		matrixSize := A.Size + 1 // 1-based indexing
+		b := make([]float64, matrixSize)
 		b[2] = Gc * vcap // Capacitor history term
 		b[3] = vin       // Voltage source
 

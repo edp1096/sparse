@@ -74,7 +74,9 @@ func (m *Matrix) FindBiggestInCol(element *Element) float64 {
 }
 
 func (m *Matrix) SearchForSingleton(step int64) *Element {
-	m.MarkowitzProd[m.Size+1] = m.MarkowitzProd[step]
+	matrixSize := m.Size + 1 // 1-based indexing
+
+	m.MarkowitzProd[matrixSize] = m.MarkowitzProd[step]
 	m.MarkowitzProd[step-1] = 0
 
 	singletons := m.Singletons
@@ -141,8 +143,10 @@ func (m *Matrix) SearchForSingleton(step int64) *Element {
 func (m *Matrix) QuicklySearchDiagonal(step int64) *Element {
 	var chosenPivot *Element
 
+	matrixSize := m.Size + 1 // 1-based indexing
+
 	minMarkowitzProduct := int64(math.MaxInt64)
-	m.MarkowitzProd[m.Size+1] = m.MarkowitzProd[step]
+	m.MarkowitzProd[matrixSize] = m.MarkowitzProd[step]
 	m.MarkowitzProd[step-1] = -1
 
 	index := m.Size + 2
@@ -219,11 +223,14 @@ func (m *Matrix) QuicklySearchDiagonal(step int64) *Element {
 
 func (m *Matrix) SearchDiagonal(step int64) *Element {
 	var chosenPivot *Element
-	minMarkowitzProduct := int64(math.MaxInt64)
-	numberOfTies := int64(0)
 	var ratioOfAccepted float64
 
-	m.MarkowitzProd[m.Size+1] = m.MarkowitzProd[step]
+	matrixSize := m.Size + 1 // 1-based indexing
+
+	minMarkowitzProduct := int64(math.MaxInt64)
+	numberOfTies := int64(0)
+
+	m.MarkowitzProd[matrixSize] = m.MarkowitzProd[step]
 
 	for i := m.Size; i >= step; i-- {
 		if m.MarkowitzProd[i] > minMarkowitzProduct {

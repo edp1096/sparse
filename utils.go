@@ -310,8 +310,10 @@ func (m *Matrix) Condition(normOfMatrix float64) (float64, error) {
 	}
 
 	size := m.Size
-	t := make([]float64, size+1)
-	tm := make([]float64, size+1)
+	matrixSize := m.Size + 1 // 1-based indexing
+
+	t := make([]float64, matrixSize)
+	tm := make([]float64, matrixSize)
 
 	// Part 1. Ay = e
 	e := 1.0
@@ -473,8 +475,10 @@ type ComplexTemp struct {
 // complexCondition returns reciprocal of the condition number for complex matrices
 func (m *Matrix) complexCondition(normOfMatrix float64) (float64, error) {
 	size := m.Size
-	t := make([]ComplexTemp, size+1)
-	tm := make([]ComplexTemp, size+1)
+	matrixSize := m.Size + 1 // 1-based indexing
+
+	t := make([]ComplexTemp, matrixSize)
+	tm := make([]ComplexTemp, matrixSize)
 
 	// Initialize T to zeros
 	for i := size; i > 0; i-- {
@@ -751,16 +755,17 @@ func (m *Matrix) Multiply(solution []float64, isolution []float64) ([]float64, [
 
 func (m *Matrix) MultiplyComplexMatrix(solution []float64, isolution []float64) ([]float64, []float64, error) {
 	separated := m.Config.SeparatedComplexVectors
+	matrixSize := m.Size + 1 // 1-based indexing
 
-	rhs := make([]float64, m.Size+1)
+	rhs := make([]float64, matrixSize)
 	var irhs []float64
 	if separated {
-		irhs = make([]float64, m.Size+1)
+		irhs = make([]float64, matrixSize)
 	} else {
-		rhs = make([]float64, 2*(m.Size+1))
+		rhs = make([]float64, 2*(matrixSize))
 	}
 
-	vector := make([]Element, m.Size+1)
+	vector := make([]Element, matrixSize)
 	for i := int64(1); i <= m.Size; i++ {
 		extIdx := m.IntToExtColMap[i]
 		if separated {
@@ -801,11 +806,13 @@ func (m *Matrix) MultplyTransposed(solution []float64, isolution []float64) ([]f
 		}
 	}
 
+	matrixSize := m.Size + 1 // 1-based indexing
+
 	// Create result vectors with proper size
-	rhs := make([]float64, m.Size+1)
+	rhs := make([]float64, matrixSize)
 	var irhs []float64
 	if m.Complex && m.Config.SeparatedComplexVectors {
-		irhs = make([]float64, m.Size+1)
+		irhs = make([]float64, matrixSize)
 	}
 
 	if m.Complex {
@@ -834,17 +841,18 @@ func (m *Matrix) MultplyTransposed(solution []float64, isolution []float64) ([]f
 
 func (m *Matrix) MultiplyComplexTransposedMatrix(solution []float64, isolution []float64) ([]float64, []float64, error) {
 	separated := m.Config.SeparatedComplexVectors
+	matrixSize := m.Size + 1 // 1-based indexing
 
 	// Create result vectors
-	rhs := make([]float64, m.Size+1)
+	rhs := make([]float64, matrixSize)
 	var irhs []float64
 	if separated {
-		irhs = make([]float64, m.Size+1)
+		irhs = make([]float64, matrixSize)
 	} else {
-		rhs = make([]float64, 2*(m.Size+1))
+		rhs = make([]float64, 2*(matrixSize))
 	}
 
-	vector := make([]Element, m.Size+1)
+	vector := make([]Element, matrixSize)
 	for i := int64(1); i <= m.Size; i++ {
 		extIdx := m.IntToExtRowMap[i]
 		if separated {

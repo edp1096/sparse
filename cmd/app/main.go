@@ -16,8 +16,8 @@ import (
 )
 
 var (
-	annotate                = 0
-	separatedComplexVectors = false
+	annotate                = 1
+	separatedComplexVectors = true
 	translate               = true
 	stability               = true
 	condition               = true
@@ -116,6 +116,7 @@ func (a *App) readMatrixFromFile(filename string) error {
 	if err != nil {
 		return fmt.Errorf("invalid size value: %v", err)
 	}
+	matrixSize := size + 1 // 1-based indexing
 
 	isComplex := false
 	if len(fields) > 1 && strings.ToLower(fields[1]) == "complex" {
@@ -141,20 +142,18 @@ func (a *App) readMatrixFromFile(filename string) error {
 		Annotate:                annotate,
 	}
 
-	a.matrix, err = sparse.Create(size, config)
-	// a.matrix, err = sparse.Create(0, config)
+	// a.matrix, err = sparse.Create(size, config)
+	a.matrix, err = sparse.Create(0, config)
 	if err != nil {
 		return fmt.Errorf("failed to create matrix: %v", err)
 	}
 
-	a.matrix.Initialize()
-
-	a.rhs = make([]float64, size+1)
+	a.rhs = make([]float64, matrixSize)
 	if isComplex {
 		if config.SeparatedComplexVectors {
-			a.irhs = make([]float64, size+1)
+			a.irhs = make([]float64, matrixSize)
 		} else {
-			a.rhs = make([]float64, 2*(size+1))
+			a.rhs = make([]float64, 2*(matrixSize))
 		}
 	}
 
@@ -275,7 +274,8 @@ func (a *App) readMatrixFromFile(filename string) error {
 	}
 
 	if !a.solutionOnly {
-		fmt.Printf("Matrix is %d x %d ", size, size)
+		// fmt.Printf("Matrix is %d x %d ", size, size)
+		fmt.Printf("Matrix is %d x %d ", a.matrix.Size, a.matrix.Size)
 		if isComplex {
 			fmt.Printf("and complex.\n")
 		} else {
@@ -512,13 +512,15 @@ func (a *App) EnlargeVectors(newSize int64, clear bool) {
 
 	var newRHS, newIRHS, newSolution, newISolution []float64
 
-	newRHS = make([]float64, newSize+1)
-	newSolution = make([]float64, newSize+1)
+	newMatrixSize := newSize + 1 // 1-based indexing
+
+	newRHS = make([]float64, newMatrixSize)
+	newSolution = make([]float64, newMatrixSize)
 
 	if a.matrix.Complex {
 		if a.matrix.Config.SeparatedComplexVectors {
-			newIRHS = make([]float64, newSize+1)
-			newISolution = make([]float64, newSize+1)
+			newIRHS = make([]float64, newMatrixSize)
+			newISolution = make([]float64, newMatrixSize)
 
 			if !clear && len(a.irhs) > 0 {
 				copy(newIRHS, a.irhs)
@@ -527,8 +529,8 @@ func (a *App) EnlargeVectors(newSize int64, clear bool) {
 				copy(newISolution, a.isolution)
 			}
 		} else {
-			newRHS = make([]float64, 2*(newSize+1))
-			newSolution = make([]float64, 2*(newSize+1))
+			newRHS = make([]float64, 2*(newMatrixSize))
+			newSolution = make([]float64, 2*(newMatrixSize))
 		}
 
 		a.irhs = newIRHS

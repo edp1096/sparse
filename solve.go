@@ -130,7 +130,9 @@ func (m *Matrix) SolveTransposed(rhs []float64) (solution []float64, err error) 
 
 func (m *Matrix) SolveComplex(rhs, irhs []float64) ([]float64, []float64, error) {
 	size := m.Size
-	solution := make([]float64, 2*(size+1))
+	matrixSize := size + 1 // 1-based indexing
+
+	solution := make([]float64, 2*(matrixSize))
 
 	if m.Config.SeparatedComplexVectors {
 		for i := int64(1); i <= size; i++ {
@@ -196,8 +198,8 @@ func (m *Matrix) SolveComplex(rhs, irhs []float64) ([]float64, []float64, error)
 	}
 
 	if m.Config.SeparatedComplexVectors {
-		solReal := make([]float64, size+1)
-		solImag := make([]float64, size+1)
+		solReal := make([]float64, matrixSize)
+		solImag := make([]float64, matrixSize)
 		for i := size; i > 0; i-- {
 			extIdx := m.IntToExtColMap[i]
 			solReal[extIdx] = m.Intermediate[i*2]
@@ -220,6 +222,7 @@ func (m *Matrix) SolveComplex(rhs, irhs []float64) ([]float64, []float64, error)
 
 func (m *Matrix) SolveComplexTransposed(rhs, irhs []float64) ([]float64, []float64, error) {
 	size := m.Size
+	matrixSize := m.Size + 1 // 1-based indexing
 
 	if !m.Factored {
 		return nil, nil, fmt.Errorf("matrix is not factored")
@@ -296,8 +299,8 @@ func (m *Matrix) SolveComplexTransposed(rhs, irhs []float64) ([]float64, []float
 	}
 
 	if m.Config.SeparatedComplexVectors {
-		solReal := make([]float64, size+1)
-		solImag := make([]float64, size+1)
+		solReal := make([]float64, matrixSize)
+		solImag := make([]float64, matrixSize)
 		for i := size; i > 0; i-- {
 			extIdx := m.IntToExtRowMap[i]
 			solReal[extIdx] = m.Intermediate[i*2]
@@ -305,7 +308,7 @@ func (m *Matrix) SolveComplexTransposed(rhs, irhs []float64) ([]float64, []float
 		}
 		return solReal, solImag, nil
 	} else {
-		solution := make([]float64, 2*(size+1))
+		solution := make([]float64, 2*(matrixSize))
 		for i := size; i > 0; i-- {
 			extIdx := m.IntToExtRowMap[i]
 			solution[extIdx*2] = m.Intermediate[i*2]

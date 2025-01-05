@@ -53,21 +53,21 @@ func Create(size int64, config *Configuration) (*Matrix, error) {
 		Size:            size,
 		ExtSize:         size,
 		Complex:         config.Complex,
-		DoRealDirect:    make([]bool, matrixSize+1),
-		DoComplexDirect: make([]bool, matrixSize+1),
+		DoRealDirect:    make([]bool, matrixSize),
+		DoComplexDirect: make([]bool, matrixSize),
 		CurrentSize:     0,
 		Elements:        0,
-		Diags:           make([]*Element, matrixSize+1),
-		FirstInRow:      make([]*Element, matrixSize+1),
-		FirstInCol:      make([]*Element, matrixSize+1),
-		Intermediate:    make([]float64, matrixSize+1),
-		MarkowitzRow:    make([]int64, matrixSize+1),
-		MarkowitzCol:    make([]int64, matrixSize+1),
-		MarkowitzProd:   make([]int64, matrixSize+1),
-		IntToExtRowMap:  make([]int64, matrixSize+1),
-		IntToExtColMap:  make([]int64, matrixSize+1),
-		ExtToIntRowMap:  make([]int64, matrixSize+1),
-		ExtToIntColMap:  make([]int64, matrixSize+1),
+		Diags:           make([]*Element, matrixSize),
+		FirstInRow:      make([]*Element, matrixSize),
+		FirstInCol:      make([]*Element, matrixSize),
+		Intermediate:    make([]float64, matrixSize),
+		MarkowitzRow:    make([]int64, matrixSize),
+		MarkowitzCol:    make([]int64, matrixSize),
+		MarkowitzProd:   make([]int64, matrixSize),
+		IntToExtRowMap:  make([]int64, matrixSize),
+		IntToExtColMap:  make([]int64, matrixSize),
+		ExtToIntRowMap:  make([]int64, matrixSize),
+		ExtToIntColMap:  make([]int64, matrixSize),
 		NeedsOrdering:   true,
 		RelThreshold:    config.DefaultThreshold,
 		AbsThreshold:    0.0,
@@ -439,13 +439,13 @@ func (m *Matrix) EnlargeMatrix(newSize int64) error {
 	}
 
 	m.Size = newSize
-	newSize1BaseIndex := newSize + 1
+	newMatrixSize := m.Size + 1 // 1-based indexing
 
-	newDiags := make([]*Element, newSize1BaseIndex)
-	newFirstInRow := make([]*Element, newSize1BaseIndex)
-	newFirstInCol := make([]*Element, newSize1BaseIndex)
-	newIntToExtColMap := make([]int64, newSize1BaseIndex)
-	newIntToExtRowMap := make([]int64, newSize1BaseIndex)
+	newDiags := make([]*Element, newMatrixSize)
+	newFirstInRow := make([]*Element, newMatrixSize)
+	newFirstInCol := make([]*Element, newMatrixSize)
+	newIntToExtColMap := make([]int64, newMatrixSize)
+	newIntToExtRowMap := make([]int64, newMatrixSize)
 
 	copy(newDiags, m.Diags)
 	copy(newFirstInRow, m.FirstInRow)
@@ -453,7 +453,7 @@ func (m *Matrix) EnlargeMatrix(newSize int64) error {
 	copy(newIntToExtColMap, m.IntToExtColMap)
 	copy(newIntToExtRowMap, m.IntToExtRowMap)
 
-	for i := int64(len(m.IntToExtColMap)); i < newSize1BaseIndex; i++ {
+	for i := int64(len(m.IntToExtColMap)); i < newMatrixSize; i++ {
 		newIntToExtColMap[i] = i
 		newIntToExtRowMap[i] = i
 	}
@@ -486,14 +486,15 @@ func (m *Matrix) ExpandTranslationArrays(newSize int64) error {
 	}
 
 	m.ExtSize = newSize
+	newMatrixSize := newSize + 1 // 1-based indexing
 
-	newExtToIntRowMap := make([]int64, newSize+1)
-	newExtToIntColMap := make([]int64, newSize+1)
+	newExtToIntRowMap := make([]int64, newMatrixSize)
+	newExtToIntColMap := make([]int64, newMatrixSize)
 
 	copy(newExtToIntRowMap, m.ExtToIntRowMap)
 	copy(newExtToIntColMap, m.ExtToIntColMap)
 
-	for i := int64(len(m.ExtToIntRowMap)); i < (newSize + 1); i++ {
+	for i := int64(len(m.ExtToIntRowMap)); i < (newMatrixSize); i++ {
 		newExtToIntRowMap[i] = -1
 		newExtToIntColMap[i] = -1
 	}
@@ -505,11 +506,12 @@ func (m *Matrix) ExpandTranslationArrays(newSize int64) error {
 }
 
 func (m *Matrix) CreateInternalVectorsNotUse() error {
-	size := m.Size
+	matrixSize := m.Size + 1 // 1-based indexing
+
 	if m.Complex {
-		m.Intermediate = make([]float64, 2*(size+1))
+		m.Intermediate = make([]float64, 2*(matrixSize))
 	} else {
-		m.Intermediate = make([]float64, size+1)
+		m.Intermediate = make([]float64, matrixSize)
 	}
 
 	m.InternalVectorsAllocated = true
@@ -517,22 +519,22 @@ func (m *Matrix) CreateInternalVectorsNotUse() error {
 }
 
 func (m *Matrix) CreateInternalVectors() error {
-	size := m.Size
+	matrixSize := m.Size + 1 // 1-based indexing
 
-	m.MarkowitzRow = make([]int64, size+1)
-	m.MarkowitzCol = make([]int64, size+1)
-	m.MarkowitzProd = make([]int64, size+2)
+	m.MarkowitzRow = make([]int64, matrixSize)
+	m.MarkowitzCol = make([]int64, matrixSize)
+	m.MarkowitzProd = make([]int64, matrixSize+1)
 
 	if m.Complex {
-		m.DoComplexDirect = make([]bool, size+1)
+		m.DoComplexDirect = make([]bool, matrixSize)
 	} else {
-		m.DoRealDirect = make([]bool, size+1)
+		m.DoRealDirect = make([]bool, matrixSize)
 	}
 
 	if m.Complex {
-		m.Intermediate = make([]float64, 2*(size+1))
+		m.Intermediate = make([]float64, 2*(matrixSize))
 	} else {
-		m.Intermediate = make([]float64, size+1)
+		m.Intermediate = make([]float64, matrixSize)
 	}
 
 	m.InternalVectorsAllocated = true
