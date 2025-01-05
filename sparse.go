@@ -525,13 +525,14 @@ func (m *Matrix) CreateInternalVectors() error {
 	m.MarkowitzCol = make([]int64, matrixSize)
 	m.MarkowitzProd = make([]int64, matrixSize+1)
 
-	if m.Complex {
-		m.DoComplexDirect = make([]bool, matrixSize)
-	} else {
+	if m.Config.Real {
 		m.DoRealDirect = make([]bool, matrixSize)
 	}
+	if m.Config.Complex {
+		m.DoComplexDirect = make([]bool, matrixSize)
+	}
 
-	if m.Complex {
+	if m.Config.Complex {
 		m.Intermediate = make([]float64, 2*(matrixSize))
 	} else {
 		m.Intermediate = make([]float64, matrixSize)
