@@ -12,7 +12,7 @@ import (
 	"strings"
 	"time"
 
-	"sparse"
+	"github.com/edp1096/sparse"
 )
 
 var (

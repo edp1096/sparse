@@ -3,7 +3,8 @@ package main // import "op"
 import (
 	"fmt"
 	"log"
-	"sparse"
+
+	"github.com/edp1096/sparse"
 )
 
 func main() {

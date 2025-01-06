@@ -2,7 +2,8 @@ package main
 
 import (
 	"fmt"
-	"sparse"
+
+	"github.com/edp1096/sparse"
 )
 
 func main() {

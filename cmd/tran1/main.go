@@ -3,7 +3,8 @@ package main
 import (
 	"fmt"
 	"math"
-	"sparse"
+
+	"github.com/edp1096/sparse"
 )
 
 func main() {

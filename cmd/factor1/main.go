@@ -1,7 +1,7 @@
 package main
 
 import (
-	"sparse"
+	"github.com/edp1096/sparse"
 )
 
 func main() {
