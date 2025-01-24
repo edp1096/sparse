@@ -14,8 +14,12 @@ func (m *Matrix) Solve(rhs []float64) (solution []float64, err error) {
 		return nil, fmt.Errorf("rhs or solution array size(%d,%d) is smaller than matrix size(%d)",
 			len(rhs), len(solution), m.Size)
 	}
+	// if m.Complex {
+	// 	return nil, fmt.Errorf("complex matrix not implemented yet")
+	// }
 	if m.Complex {
-		return nil, fmt.Errorf("complex matrix not implemented yet")
+		solution, _, err := m.SolveComplex(rhs, nil)
+		return solution, err
 	}
 	if m.Intermediate == nil {
 		return nil, fmt.Errorf("intermediate vector not allocated")
@@ -76,8 +80,12 @@ func (m *Matrix) SolveTransposed(rhs []float64) (solution []float64, err error) 
 		return nil, fmt.Errorf("rhs or solution array size(%d,%d) is smaller than matrix size(%d)",
 			len(rhs), len(solution), m.Size)
 	}
+	// if m.Complex {
+	// 	return nil, fmt.Errorf("complex matrix not implemented yet")
+	// }
 	if m.Complex {
-		return nil, fmt.Errorf("complex matrix not implemented yet")
+		solution, _, err := m.SolveComplexTransposed(rhs, nil)
+		return solution, err
 	}
 	if m.Intermediate == nil {
 		return nil, fmt.Errorf("intermediate vector not allocated")
@@ -132,16 +140,30 @@ func (m *Matrix) SolveComplex(rhs, irhs []float64) ([]float64, []float64, error)
 	size := m.Size
 	matrixSize := size + 1 // 1-based indexing
 
+	if !m.Factored {
+		return nil, nil, fmt.Errorf("matrix is not factored")
+	}
+
+	if m.Intermediate == nil || len(m.Intermediate) < int(2*matrixSize) {
+		m.Intermediate = make([]float64, 2*matrixSize)
+	}
+
 	solution := make([]float64, 2*(matrixSize))
 
 	if m.Config.SeparatedComplexVectors {
 		for i := int64(1); i <= size; i++ {
+			if i*2 >= int64(len(m.Intermediate)) {
+				return nil, nil, fmt.Errorf("intermediate vector size too small")
+			}
 			extIdx := m.IntToExtRowMap[i]
 			m.Intermediate[i*2] = rhs[extIdx]
 			m.Intermediate[i*2+1] = irhs[extIdx]
 		}
 	} else {
 		for i := int64(1); i <= size; i++ {
+			if i*2 >= int64(len(m.Intermediate)) {
+				return nil, nil, fmt.Errorf("intermediate vector size too small")
+			}
 			extIdx := m.IntToExtRowMap[i]
 			temp := &Element{
 				Real: rhs[extIdx*2],
