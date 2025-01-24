@@ -3,6 +3,7 @@ package main
 import (
 	"fmt"
 	"log"
+	"math"
 
 	"github.com/edp1096/sparse"
 )
@@ -27,8 +28,22 @@ func (m *CircuitMatrix) AddComplexElement(i, j int, real, imag float64) {
 	element.Imag += imag
 }
 
+func (m *CircuitMatrix) PrintMatrixWithPhase() {
+	fmt.Println("Matrix with phase angles:")
+	for i := 1; i <= m.Size; i++ {
+		for j := 1; j <= m.Size; j++ {
+			element := m.matrix.GetElement(int64(i), int64(j))
+			if element != nil {
+				phase := math.Atan2(element.Imag, element.Real) * (180 / math.Pi)
+				fmt.Printf("Element (%d, %d): %v + %vj, Phase: %v degrees\n", i, j, element.Real, element.Imag, phase)
+			} else {
+				fmt.Printf("Element (%d, %d): nil\n", i, j)
+			}
+		}
+	}
+}
+
 func main() {
-	// 매트릭스 크기 및 구성 설정
 	matrixSize := 5
 	config := &sparse.Configuration{
 		Real:                    true,
@@ -42,33 +57,18 @@ func main() {
 		Annotate:                0,
 	}
 
-	// 매트릭스 생성
 	matrix, err := sparse.Create(int64(matrixSize), config)
 	if err != nil {
 		log.Fatalf("Failed to create matrix: %v", err)
 	}
 	defer matrix.Destroy()
 
-	// 매트릭스 초기화
 	matrix.Clear()
 
-	// 회로 매트릭스 초기화
 	circuitMatrix := &CircuitMatrix{Size: matrixSize, matrix: matrix}
 
-	// 예제 요소 추가
 	circuitMatrix.AddComplexElement(1, 1, 1.0, 0.5)
 	circuitMatrix.AddComplexElement(2, 2, -1.0, -0.5)
 
-	// 매트릭스 상태 출력
-	fmt.Println("Matrix after adding elements:")
-	for i := 1; i <= matrixSize; i++ {
-		for j := 1; j <= matrixSize; j++ {
-			element := circuitMatrix.matrix.GetElement(int64(i), int64(j))
-			if element != nil {
-				fmt.Printf("Element (%d, %d): %v + %vj\n", i, j, element.Real, element.Imag)
-			} else {
-				fmt.Printf("Element (%d, %d): nil\n", i, j)
-			}
-		}
-	}
+	circuitMatrix.PrintMatrixWithPhase()
 }
