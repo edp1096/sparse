@@ -13,7 +13,7 @@ func main() {
 	config := &sparse.Configuration{
 		Real:                    true,
 		Complex:                 true,
-		SeparatedComplexVectors: false,
+		SeparatedComplexVectors: true,
 		Expandable:              true,
 		Translate:               false,
 		ModifiedNodal:           true,
@@ -86,44 +86,40 @@ func main() {
 
 	// SeparatedComplexVectors = false
 	sb := make([]float64, 6) // 2 nodes * (Real + Imag)
-	sb[0] = 1.0              // node 1 real
-	sb[1] = 0.0              // node 1 imag
-	sb[2] = 0.0              // node 2 real
-	sb[3] = 0.0              // node 2 imag
+	sb[2] = 1.0              // node 1 real
+	sb[3] = 0.0              // node 1 imag
+	sb[4] = 0.0              // node 2 real
+	sb[5] = 0.0              // node 2 imag
 
 	fmt.Println("\nRHS vector:")
 	if config.SeparatedComplexVectors {
-		for i := 0; i < 2; i++ {
-			fmt.Printf("Node %d: %.6f + j%.6f\n", i+1, b[2*i], b[2*i+1])
+		for i := 1; i <= 2; i++ {
+			fmt.Printf("Node %d: %.6f + j%.6f\n", i+1, b[i], ib[i])
 		}
 	} else {
-		for i := 0; i < 2; i++ {
+		for i := 1; i <= 2; i++ {
 			fmt.Printf("Node %d: %.6f + j%.6f\n", i+1, sb[2*i], sb[2*i+1])
 		}
 	}
 
+	var xReal, xImag []float64
 	if config.SeparatedComplexVectors {
-		xReal, xImag, err := A.SolveComplex(b, ib)
+		xReal, xImag, err = A.SolveComplex(b, ib)
 		if err != nil {
 			panic(err)
-		}
-
-		fmt.Println("\nSolution vector:")
-		for i := 0; i < 2; i++ {
-			phase := math.Atan2(xImag[2*i+1], xReal[2*i]) * 180 / math.Pi
-			fmt.Printf("Node %d: %.6f + j%.6f, Phase: %.2f degrees\n", i+1, xReal[2*i], xImag[2*i+1], phase)
 		}
 	} else {
-		x, err := A.Solve(sb)
+		// x, err := A.Solve(sb)
+		xReal, xImag, err = A.SolveComplex(sb, nil)
 		if err != nil {
 			panic(err)
 		}
+	}
 
-		fmt.Println("\nSolution vector:")
-		for i := 0; i < 2; i++ {
-			phase := math.Atan2(x[2*i+1], x[2*i]) * 180 / math.Pi
-			fmt.Printf("Node %d: %.6f + j%.6f, Phase: %.2f degrees\n", i+1, x[2*i], x[2*i+1], phase)
-		}
+	fmt.Println("\nSolution vector:")
+	for i := 1; i <= 2; i++ {
+		phase := math.Atan2(xImag[i], xReal[i]) * 180 / math.Pi
+		fmt.Printf("Node %d: %.6f + j%.6f, Phase: %.2f degrees\n", i, xReal[i], xImag[i], phase)
 	}
 
 }
