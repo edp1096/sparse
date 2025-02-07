@@ -197,10 +197,12 @@ func (m *Matrix) createElement(row, col int64, firstInRow, firstInCol **Element,
 	)
 
 	current := *firstInCol
-	var prev **Element = firstInCol
+	// var prev **Element = firstInCol
+	prev := firstInCol
 	for current != nil && current.Row < row {
 		prev = &current.NextInCol
-		current = current.NextInCol
+		// current = current.NextInCol
+		current = *prev
 	}
 
 	if current != nil && current.Row == row {
@@ -301,6 +303,10 @@ func (m *Matrix) GetElement(row, col int64) *Element {
 			return nil
 		}
 	default:
+		if m.Reordered {
+			panic("Set Translate to add elements to a reordered matrix")
+		}
+
 		if row > m.Size || col > m.Size {
 			if m.Config.Expandable {
 				newSize := max(row, col)
@@ -309,9 +315,6 @@ func (m *Matrix) GetElement(row, col int64) *Element {
 					return nil
 				}
 			} else {
-				if m.Reordered {
-					panic("Set Translate to add elements to a reordered matrix")
-				}
 				return nil
 			}
 		}
@@ -323,13 +326,14 @@ func (m *Matrix) GetElement(row, col int64) *Element {
 		}
 	}
 
-	element := m.FirstInCol[internalCol]
-	for element != nil {
-		if element.Row == internalRow {
-			return element
-		}
-		element = element.NextInCol
-	}
+	// element := m.FirstInCol[internalCol]
+	// for element != nil {
+	// 	if element.Row == internalRow {
+	// 		fmt.Println("GetElement", internalRow, internalCol, element.Row, element.Col)
+	// 		return element
+	// 	}
+	// 	element = element.NextInCol
+	// }
 
 	return m.createElement(internalRow, internalCol, &m.FirstInRow[internalRow], &m.FirstInCol[internalCol], false)
 }
