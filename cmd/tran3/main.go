@@ -11,6 +11,13 @@ import (
 	"github.com/edp1096/sparse"
 )
 
+type IntegrationMethod int
+
+type BackwardDifferentialFormula struct {
+	coefficients []float64 // BDF coefficients
+	beta         float64   // BDF f(y^(n+1)) coefficient
+}
+
 const (
 	R     = 100.0
 	L     = 1e-3
@@ -22,16 +29,17 @@ const (
 	tstop    = 0.002
 	timestep = 1e-5
 
-	bdfOrder = 6
+	integrationMethod = TrapezoidalMethod
+	bdfOrder          = 6
 )
 
-type BackwardDifferentialFormula struct {
-	coefficients []float64 // BDF coefficients
-	beta         float64   // BDF f(y^(n+1)) coefficient
-}
+const (
+	GearMethod IntegrationMethod = iota
+	TrapezoidalMethod
+)
 
 // BDF coefficients
-var bdfCoefficients = []BackwardDifferentialFormula{
+var bdfCoefficients = [6]BackwardDifferentialFormula{
 	{[]float64{1.0}, 1.0},
 	{[]float64{4.0 / 3.0, -1.0 / 3.0}, 2.0 / 3.0},
 	{[]float64{18.0 / 11.0, -9.0 / 11.0, 2.0 / 11.0}, 6.0 / 11.0},
@@ -40,16 +48,33 @@ var bdfCoefficients = []BackwardDifferentialFormula{
 	{[]float64{360.0 / 147.0, -450.0 / 147.0, 400.0 / 147.0, -225.0 / 147.0, 72.0 / 147.0, -10.0 / 147.0}, 60.0 / 147.0},
 }
 
-func calcBDFcoeffs(bdf BackwardDifferentialFormula, dt float64) []float64 {
-	order := len(bdf.coefficients)
+func GetBDFcoeffs(order int, dt float64) []float64 {
+	bdf := bdfCoefficients[order-1]
 	coeffs := make([]float64, order+1)
 	scale := 1.0 / (bdf.beta * dt)
 	coeffs[0] = scale
+
 	for i := 1; i <= order; i++ {
 		coeffs[i] = -bdf.coefficients[i-1] * scale
 	}
 
 	return coeffs
+}
+
+func GetTrapezoidalCoeffs(dt float64) []float64 {
+	coeffs := make([]float64, 1)
+	coeffs[0] = 2.0 * L / dt
+
+	return coeffs
+}
+
+func GetIntegratorCoeffs(order int, dt float64) []float64 {
+	switch integrationMethod {
+	case TrapezoidalMethod:
+		return GetTrapezoidalCoeffs(dt)
+	default:
+		return GetBDFcoeffs(order, dt)
+	}
 }
 
 func main() {
@@ -114,7 +139,8 @@ func main() {
 			order = i + 1
 		}
 
-		coeffs := calcBDFcoeffs(bdfCoefficients[order-1], dt)
+		// coeffs := GetBDFcoeffs(order, dt)
+		coeffs := GetIntegratorCoeffs(order, dt)
 
 		tNext := float64(i+1) * dt
 
@@ -127,17 +153,30 @@ func main() {
 		A.GetElement(3, 2).Real += 1.0
 		A.GetElement(4, 1).Real += -1.0
 		A.GetElement(4, 2).Real += 1.0
-		A.GetElement(4, 3).Real += L * coeffs[0]
+
+		switch integrationMethod {
+		case TrapezoidalMethod:
+			A.GetElement(4, 3).Real += coeffs[0]
+
+		default:
+			A.GetElement(4, 3).Real += coeffs[0] * L
+		}
 
 		b[1] = 0.0
 		b[2] = 0.0
 		b[3] = Vpeak * math.Sin(2.0*math.Pi*freq*tNext)
 		b[4] = 0.0
 		if i > 0 {
-			for j := 1; j <= order; j++ {
-				b[4] -= coeffs[j] * iL[i+1-j]
+			switch integrationMethod {
+			case TrapezoidalMethod:
+				b[4] = coeffs[0]*iL[i] - vL[i]
+
+			default:
+				for j := 1; j <= order; j++ {
+					b[4] -= coeffs[j] * iL[i+1-j]
+				}
+				b[4] *= L
 			}
-			b[4] *= L
 		}
 
 		A.MNAPreorder()
@@ -166,7 +205,11 @@ func main() {
 	theoryMaxVL := L * maxDiDt
 
 	fmt.Println()
-	fmt.Printf("Gear%d\n", bdfOrder)
+	if integrationMethod == TrapezoidalMethod {
+		fmt.Printf("Trapezoidal\n")
+	} else {
+		fmt.Printf("Gear%d\n", bdfOrder)
+	}
 	fmt.Printf("Theory max VL: %.6f V\n", theoryMaxVL)
 	fmt.Printf("Max VL: %.6f V\n", maxVL)
 	errPct := 100 * math.Abs(maxVL-theoryMaxVL) / theoryMaxVL
