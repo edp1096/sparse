@@ -166,7 +166,7 @@ func main() {
 	theoryMaxVL := L * maxDiDt
 
 	fmt.Println()
-	fmt.Printf("BDF order: %d\n", bdfOrder)
+	fmt.Printf("Gear%d:\n", bdfOrder)
 	fmt.Printf("Theory max VL: %.6f V\n", theoryMaxVL)
 	fmt.Printf("Max VL: %.6f V\n", maxVL)
 	errPct := 100 * math.Abs(maxVL-theoryMaxVL) / theoryMaxVL
