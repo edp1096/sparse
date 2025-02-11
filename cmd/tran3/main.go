@@ -55,7 +55,7 @@ func calcBDFcoeffs(bdf BackwardDifferentialFormula, dt float64) []float64 {
 func main() {
 	t0 := 0.0
 	dt := timestep
-	N := int(tstop/dt) + 1 // timestep coefficient
+	N := int(tstop/dt) + 1 // data count
 
 	config := &sparse.Configuration{
 		Real:          true,
