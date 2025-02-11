@@ -63,7 +63,7 @@ func GetBDFcoeffs(order int, dt float64) []float64 {
 
 func GetTrapezoidalCoeffs(dt float64) []float64 {
 	coeffs := make([]float64, 1)
-	coeffs[0] = 2.0 * L / dt
+	coeffs[0] = 2.0 / dt
 
 	return coeffs
 }
@@ -154,7 +154,7 @@ func main() {
 
 		switch integrationMethod {
 		case TrapezoidalMethod:
-			A.GetElement(4, 3).Real += coeffs[0]
+			A.GetElement(4, 3).Real += coeffs[0] * L
 
 		default:
 			A.GetElement(4, 3).Real += coeffs[0] * L
@@ -167,7 +167,7 @@ func main() {
 		if i > 0 {
 			switch integrationMethod {
 			case TrapezoidalMethod:
-				b[4] = coeffs[0]*iL[i] - vL[i]
+				b[4] = coeffs[0]*iL[i]*L - vL[i]
 
 			default:
 				for j := 1; j <= order; j++ {
