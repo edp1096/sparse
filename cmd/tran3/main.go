@@ -139,9 +139,7 @@ func main() {
 			order = i + 1
 		}
 
-		// coeffs := GetBDFcoeffs(order, dt)
 		coeffs := GetIntegratorCoeffs(order, dt)
-
 		tNext := float64(i+1) * dt
 
 		A.Clear()
