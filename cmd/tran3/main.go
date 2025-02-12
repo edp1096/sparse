@@ -65,11 +65,9 @@ func GetBDFcoeffs(order int, dt float64) []float64 {
 func GetTrapezoidalCoeffs(order int, dt float64) []float64 {
 	coeffs := make([]float64, 1)
 
-	switch order {
-	case 1:
+	coeffs[0] = 2.0 / dt
+	if order == 1 {
 		coeffs[0] = 1.0 / dt
-	default:
-		coeffs[0] = 2.0 / dt
 	}
 
 	return coeffs
