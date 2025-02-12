@@ -30,7 +30,8 @@ const (
 	timestep = 1e-5
 
 	integrationMethod = TrapezoidalMethod
-	bdfOrder          = 6
+	// integrationMethod = GearMethod
+	methodOrder = 6
 )
 
 const (
@@ -61,9 +62,15 @@ func GetBDFcoeffs(order int, dt float64) []float64 {
 	return coeffs
 }
 
-func GetTrapezoidalCoeffs(dt float64) []float64 {
+func GetTrapezoidalCoeffs(order int, dt float64) []float64 {
 	coeffs := make([]float64, 1)
-	coeffs[0] = 2.0 / dt
+
+	switch order {
+	case 1:
+		coeffs[0] = 1.0 / dt
+	default:
+		coeffs[0] = 2.0 / dt
+	}
 
 	return coeffs
 }
@@ -71,7 +78,7 @@ func GetTrapezoidalCoeffs(dt float64) []float64 {
 func GetIntegratorCoeffs(order int, dt float64) []float64 {
 	switch integrationMethod {
 	case TrapezoidalMethod:
-		return GetTrapezoidalCoeffs(dt)
+		return GetTrapezoidalCoeffs(order, dt)
 	default:
 		return GetBDFcoeffs(order, dt)
 	}
@@ -134,8 +141,8 @@ func main() {
 
 	// Transient
 	for i := 0; i < N-1; i++ {
-		order := bdfOrder
-		if i+1 < bdfOrder {
+		order := methodOrder
+		if i+1 < methodOrder {
 			order = i + 1
 		}
 
@@ -151,30 +158,25 @@ func main() {
 		A.GetElement(3, 2).Real += 1.0
 		A.GetElement(4, 1).Real += -1.0
 		A.GetElement(4, 2).Real += 1.0
-
-		switch integrationMethod {
-		case TrapezoidalMethod:
-			A.GetElement(4, 3).Real += coeffs[0] * L
-
-		default:
-			A.GetElement(4, 3).Real += coeffs[0] * L
-		}
+		A.GetElement(4, 3).Real += coeffs[0] * L
 
 		b[1] = 0.0
 		b[2] = 0.0
 		b[3] = Vpeak * math.Sin(2.0*math.Pi*freq*tNext)
 		b[4] = 0.0
-		if i > 0 {
-			switch integrationMethod {
-			case TrapezoidalMethod:
-				b[4] = coeffs[0]*iL[i]*L - vL[i]
-
-			default:
-				for j := 1; j <= order; j++ {
-					b[4] -= coeffs[j] * iL[i+1-j]
-				}
-				b[4] *= L
+		switch integrationMethod {
+		case TrapezoidalMethod:
+			if i < 2 || order == 1 {
+				b[4] = coeffs[0] * iL[i] * L // order1 (Backward Euler)
+			} else {
+				b[4] = coeffs[0]*iL[i]*L - vL[i] // order2 (현재 잘 동작하는 코드)
 			}
+
+		default:
+			for j := 1; j <= order; j++ {
+				b[4] -= coeffs[j] * iL[i+1-j]
+			}
+			b[4] *= L
 		}
 
 		A.MNAPreorder()
@@ -206,7 +208,7 @@ func main() {
 	if integrationMethod == TrapezoidalMethod {
 		fmt.Printf("Trapezoidal\n")
 	} else {
-		fmt.Printf("Gear%d\n", bdfOrder)
+		fmt.Printf("Gear%d\n", methodOrder)
 	}
 	fmt.Printf("Theory max VL: %.6f V\n", theoryMaxVL)
 	fmt.Printf("Max VL: %.6f V\n", maxVL)
