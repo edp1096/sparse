@@ -13,6 +13,11 @@ import (
 
 type IntegrationMethod int
 
+const (
+	GearMethod IntegrationMethod = iota
+	TrapezoidalMethod
+)
+
 type BackwardDifferentialFormula struct {
 	coefficients []float64 // BDF coefficients
 	beta         float64   // BDF f(y^(n+1)) coefficient
@@ -32,11 +37,6 @@ const (
 	integrationMethod = TrapezoidalMethod
 	// integrationMethod = GearMethod
 	methodOrder = 6
-)
-
-const (
-	GearMethod IntegrationMethod = iota
-	TrapezoidalMethod
 )
 
 // BDF coefficients
@@ -164,6 +164,7 @@ func main() {
 		b[2] = 0.0
 		b[3] = Vpeak * math.Sin(2.0*math.Pi*freq*tNext)
 		b[4] = 0.0
+
 		switch integrationMethod {
 		case TrapezoidalMethod:
 			if i < 2 || order == 1 {
