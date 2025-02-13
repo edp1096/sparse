@@ -36,8 +36,10 @@ const (
 
 	integrationMethod = TrapezoidalMethod
 	// integrationMethod = GearMethod
-	methodOrder = 6
+	// methodOrder = 6
 )
+
+var methodOrder = 6
 
 // BDF coefficients
 var bdfCoefficients = [6]BackwardDifferentialFormula{
@@ -86,6 +88,10 @@ func main() {
 	t0 := 0.0
 	dt := timestep
 	N := int(tstop/dt) + 1 // data count
+
+	if integrationMethod == TrapezoidalMethod && methodOrder > 2 {
+		methodOrder = 2
+	}
 
 	config := &sparse.Configuration{
 		Real:          true,
