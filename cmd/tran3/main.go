@@ -29,13 +29,6 @@ const (
 	tstop    = 0.002
 	timestep = 1e-5
 
-	minTimestep = 1e-9
-	maxTimestep = 1e-3
-	TRTOL       = 7.0
-	RELTOL      = 1e-3
-	ABSTOL      = 1e-12
-	VOLTOL      = 1e-6
-
 	integrationMethod = TrapezoidalMethod
 	// integrationMethod = GearMethod
 	methodOrder = 6
@@ -87,44 +80,6 @@ func GetIntegratorCoeffs(order int, dt float64) []float64 {
 	default:
 		return GetBDFcoeffs(order, dt)
 	}
-}
-
-func CalcLTE(predicted, actual float64) float64 {
-	if math.IsNaN(predicted) || math.IsNaN(actual) {
-		return math.Inf(1)
-	}
-	return math.Abs(actual - predicted)
-}
-
-func CheckLTE(predicted, actual, reltol, abstol float64) (bool, float64, float64) {
-	if math.IsNaN(predicted) || math.IsNaN(actual) {
-		return false, math.Inf(1), 0
-	}
-
-	tol := math.Max(math.Abs(predicted), math.Abs(actual))*reltol + abstol
-	lte := CalcLTE(predicted, actual)
-
-	return lte <= (TRTOL * tol), lte, tol
-}
-
-func AdjustTimestep(dt, lte, tol float64) float64 {
-	if lte <= 0 {
-		return dt
-	}
-
-	factor := (TRTOL * tol) / lte
-	factor = math.Pow(factor, 1.0/3.0)
-
-	newStep := dt * factor
-
-	if newStep < dt {
-		newStep = math.Max(0.5*dt, minTimestep)
-	} else {
-		// newStep = math.Min(1.5*dt, maxTimestep)
-		newStep = math.Min(2.0*dt, maxTimestep)
-	}
-
-	return newStep
 }
 
 func main() {
@@ -190,9 +145,8 @@ func main() {
 			order = i + 1
 		}
 
-		// dt = timestep
-		// tNext := currentTime + dt
-		tNext := float64(i+1) * dt
+		// tNext := float64(i+1) * dt
+		tNext := currentTime + dt
 		coeffs := GetIntegratorCoeffs(order, dt)
 
 		A.Clear()
@@ -235,24 +189,6 @@ func main() {
 
 		iL[i+1] = x[3]
 		vL[i+1] = x[2] - x[1]
-
-		// // LTE, timestep
-		// if i > 0 {
-		// 	// lteOK, lteVal := CheckLTE(iL[i+1], iL[i], RELTOL, ABSTOL)
-		// 	// voltOK, voltVal := CheckLTE(vL[i+1], vL[i], RELTOL, VOLTOL)
-		// 	// lteOK, _, lteTol := CheckLTE(iL[i+1], iL[i], RELTOL, ABSTOL)
-		// 	lteOK, lteVal, lteTol := CheckLTE(iL[i+1], iL[i], RELTOL, ABSTOL)
-		// 	voltOK, _, _ := CheckLTE(vL[i+1], vL[i], RELTOL, VOLTOL)
-
-		// 	if !lteOK || !voltOK {
-		// 		// fmt.Printf("Warnings at t=%.6f:\n", tNext)
-		// 		// fmt.Printf("  Current LTE: %.2e (tol: %.2e)\n", lteVal, TRTOL*RELTOL)
-		// 		// fmt.Printf("  Voltage LTE: %.2e (tol: %.2e)\n", voltVal, TRTOL*RELTOL)
-
-		// 		// dt = AdjustTimestep(dt, iL[i+1], iL[i], RELTOL, ABSTOL)
-		// 		dt = AdjustTimestep(dt, lteVal, lteTol)
-		// 	}
-		// }
 
 		currentTime += dt
 
