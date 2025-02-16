@@ -1,3 +1,7 @@
+/*
+Simple RL Circuit with LTE
+*/
+
 package main
 
 import (
