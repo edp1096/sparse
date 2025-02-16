@@ -43,7 +43,7 @@ var (
 	methodOrder       = 6          // Trapezoidal: 1 or 2, Gear: 1 ~ 6
 
 	// BDF coefficients
-	bdfCoefficients = [6]BackwardDifferentialFormula{
+	BdfCoefficients = [6]BackwardDifferentialFormula{
 		{[]float64{1.0}, 1.0},                                                                                                // 1st order
 		{[]float64{4.0 / 3.0, -1.0 / 3.0}, 2.0 / 3.0},                                                                        // 2nd order
 		{[]float64{18.0 / 11.0, -9.0 / 11.0, 2.0 / 11.0}, 6.0 / 11.0},                                                        // 3rd order
@@ -52,10 +52,10 @@ var (
 		{[]float64{360.0 / 147.0, -450.0 / 147.0, 400.0 / 147.0, -225.0 / 147.0, 72.0 / 147.0, -10.0 / 147.0}, 60.0 / 147.0}, // 6th order
 	}
 
-	lteTrapCoeffs = []float64{0.5, 1.0 / 12.0}
-	lteBdfCoeffs  = []float64{0.5, 2.0 / 3.0, 6.0 / 11.0, 12.0 / 25.0, 60.0 / 137.0, 60.0 / 147.0}
+	LteTrapCoeffs = []float64{0.5, 1.0 / 12.0}
+	LteBdfCoeffs  = []float64{0.5, 2.0 / 3.0, 6.0 / 11.0, 12.0 / 25.0, 60.0 / 137.0, 60.0 / 147.0}
 
-	stabilityFactors = []float64{2.00, 2.00, 1.98, 1.92, 1.76, 1.56} // stability factor
+	StabilityFactors = []float64{2.00, 2.00, 1.98, 1.92, 1.76, 1.56} // stability factor
 )
 
 func GetBDFcoeffs(order int, dt float64) []float64 {
@@ -63,7 +63,7 @@ func GetBDFcoeffs(order int, dt float64) []float64 {
 		panic(fmt.Sprintf("Invalid BDF order: %d", order))
 	}
 
-	bdf := bdfCoefficients[order-1]
+	bdf := BdfCoefficients[order-1]
 	coeffs := make([]float64, order+1)
 	scale := 1.0 / (bdf.beta * dt)
 	coeffs[0] = scale
@@ -117,15 +117,15 @@ func calculateLTE(values []float64, dt float64, order int) float64 {
 	var lteCoeff float64
 	switch integrationMethod {
 	case TrapezoidalMethod:
-		lteCoeff = lteTrapCoeffs[order-1]
+		lteCoeff = LteTrapCoeffs[order-1]
 	default:
-		lteCoeff = lteBdfCoeffs[order-1]
+		lteCoeff = LteBdfCoeffs[order-1]
 	}
 
 	return math.Abs(lteCoeff * math.Pow(dt, float64(order+1)) * der[0])
 }
 
-func calculateNewTimeStep(currentStep, lte float64, order int) float64 {
+func calculateNewTimeStep(currentStep, lte float64, order int, timestep float64) float64 {
 	if lte < 1e-15 {
 		return currentStep
 	}
@@ -134,7 +134,7 @@ func calculateNewTimeStep(currentStep, lte float64, order int) float64 {
 	factor = math.Max(0.1, math.Min(factor, 10.0))
 
 	newStep := currentStep * factor
-	maxStep := stabilityFactors[order-1] * timestep
+	maxStep := StabilityFactors[order-1] * timestep
 
 	newStep = math.Min(newStep, maxStep)
 	newStep = math.Max(newStep, minTimeStep)
@@ -267,7 +267,7 @@ func main() {
 		// Error control
 		lte := calculateLTE(currents, dt, currentOrder)
 		if lte > targetLTE && len(currents) >= currentOrder+1 {
-			dt = calculateNewTimeStep(dt, lte, currentOrder)
+			dt = calculateNewTimeStep(dt, lte, currentOrder, timestep)
 			continue
 		}
 
@@ -276,7 +276,7 @@ func main() {
 		currents = append(currents, current)
 		voltages = append(voltages, voltage)
 
-		dt = calculateNewTimeStep(dt, lte, currentOrder)
+		dt = calculateNewTimeStep(dt, lte, currentOrder, timestep)
 
 		if len(timePoints)%10 == 0 || t == tstop {
 			fmt.Printf("%8.6f | %12.8f | %12.8f | %10.2e | %5d | %10.2e\n", t, current, voltage, dt, currentOrder, lte)
