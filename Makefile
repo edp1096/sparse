@@ -1,7 +1,7 @@
-.PHONY: default all sparse factor1 solve1 solve2 op1 op2 tran1 tran2 tran3 ac1 clean
+.PHONY: default all sparse factor1 solve1 solve2 op1 op2 tran1 tran2 tran3 tran4 ac1 clean
 
 default: all
-all: sparse factor1 solve1 solve2 op1 op2 tran1 tran2 tran3 ac1
+all: sparse factor1 solve1 solve2 op1 op2 tran1 tran2 tran3 tran4 ac1
 
 BINARY_DIR := bin
 
@@ -30,6 +30,9 @@ tran2:
 	go build -o $(BINARY_DIR)/ ./cmd/$@
 
 tran3:
+	go build -o $(BINARY_DIR)/ ./cmd/$@
+
+tran4:
 	go build -o $(BINARY_DIR)/ ./cmd/$@
 
 ac1:
