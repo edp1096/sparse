@@ -2,7 +2,6 @@ package main
 
 import (
 	"fmt"
-	"log"
 	"math"
 
 	"github.com/edp1096/sparse"
@@ -242,7 +241,6 @@ func main() {
 		if currentOrder > 1 {
 			lte = calculateLTE(currents, dt, currentOrder)
 			if lte > targetLTE && len(currents) >= currentOrder+1 {
-				log.Println("WTF", currentOrder)
 				dt = calculateNewTimeStep(dt, lte, currentOrder, dt)
 				continue
 			}
