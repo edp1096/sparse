@@ -33,8 +33,8 @@ const (
 )
 
 var (
-	integrationMethod = GearMethod // TrapezoidalMethod or GearMethod
-	methodOrder       = 6          // Trapezoidal: 1 or 2, Gear: 1 ~ 6
+	integrationMethod = TrapezoidalMethod // TrapezoidalMethod or GearMethod
+	methodOrder       = 2                 // Trapezoidal: 1 or 2, Gear: 1 ~ 6
 
 	BdfCoefficients = [6]BackwardDifferentialFormula{
 		{[]float64{1.0}, 1.0},                                                                                                // 1st order
@@ -74,7 +74,8 @@ func GetTrapezoidalCoeffs(order int, dt float64) []float64 {
 	}
 
 	coeffs := make([]float64, 1)
-	coeffs[0] = 1.0 / 2.0 * dt
+	// coeffs[0] = 1.0 / (2.0 * dt)
+	coeffs[0] = 2.0 / dt
 	if order == 1 {
 		coeffs[0] = 1.0 / dt
 	}
@@ -161,7 +162,8 @@ func main() {
 
 	startTime := 0.0
 	endTime := 0.002
-	dt := 1e-5
+	timestep := 1e-5
+	dt := timestep
 	t := startTime
 
 	currents := []float64{0.0}
@@ -209,11 +211,12 @@ func main() {
 
 		switch integrationMethod {
 		case TrapezoidalMethod:
-			A.GetElement(4, 4).Real = -L / dt
+			A.GetElement(4, 4).Real = -coeffs[0] * L
 
-			b[4] += -coeffs[0] * currents[len(currents)-1] * L
-			if currentOrder > 1 && len(currents) >= 2 {
-				b[4] += -coeffs[0] * (currents[len(currents)-1] - currents[len(currents)-2])
+			if currentOrder == 1 {
+				b[4] = -coeffs[0] * L * currents[len(currents)-1]
+			} else {
+				b[4] = -coeffs[0]*L*(currents[len(currents)-1]) - voltages[len(voltages)-1]
 			}
 
 		default:
@@ -241,13 +244,13 @@ func main() {
 		if currentOrder > 1 {
 			lte = calculateLTE(currents, dt, currentOrder)
 			if lte > targetLTE && len(currents) >= currentOrder+1 {
-				dt = calculateNewTimeStep(dt, lte, currentOrder, dt)
+				dt = calculateNewTimeStep(dt, lte, currentOrder, timestep)
 				continue
 			}
 		}
 
 		currents = append(currents, x[4])
-		voltages = append(voltages, x[2]-x[1])
+		voltages = append(voltages, x[2])
 		vL = append(vL, x[2])
 
 		fmt.Printf("%.6f | %.5f | %.5f | %.5f | %.5f | %.5f | %.2e | %d | %.2e\n", t, vin, x[1], x[2], x[3], x[4], dt, currentOrder, lte)
@@ -255,7 +258,7 @@ func main() {
 		tPrev := t
 		dtPrev := dt
 		t += dt
-		dt = calculateNewTimeStep(dt, lte, currentOrder, dt)
+		dt = calculateNewTimeStep(dt, lte, currentOrder, timestep)
 		if t > endTime && tPrev < endTime {
 			t = endTime
 			dt = dtPrev
