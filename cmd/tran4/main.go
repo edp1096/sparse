@@ -255,11 +255,12 @@ func main() {
 		fmt.Printf("%.6f | %.5f | %.5f | %.5f | %.5f | %.5f | %.2e | %d | %.2e\n", t, vin, x[1], x[2], x[3], x[4], dt, currentOrder, lte)
 
 		tPrev := t
+		dtPrev := dt
 		t += dt
 		dt = calculateNewTimeStep(dt, lte, currentOrder, dt)
 		if t > endTime && tPrev < endTime {
 			t = endTime
-			dt = t - tPrev
+			dt = dtPrev
 		}
 	}
 
