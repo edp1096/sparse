@@ -30,11 +30,15 @@ const (
 	minTimeStep  = 1e-9
 	maxStepSize  = 5e-5
 	safetyFactor = 0.9
+
+	StartTime = 0.0
+	EndTime   = 0.002
+	TimeStep  = 1e-5
 )
 
 var (
-	integrationMethod = TrapezoidalMethod // TrapezoidalMethod or GearMethod
-	methodOrder       = 2                 // Trapezoidal: 1 or 2, Gear: 1 ~ 6
+	integrationMethod = GearMethod // TrapezoidalMethod or GearMethod
+	methodOrder       = 6          // Trapezoidal: 1 or 2, Gear: 1 ~ 6
 
 	BdfCoefficients = [6]BackwardDifferentialFormula{
 		{[]float64{1.0}, 1.0},                                                                                                // 1st order
@@ -74,7 +78,7 @@ func GetTrapezoidalCoeffs(order int, dt float64) []float64 {
 	}
 
 	coeffs := make([]float64, 1)
-	// coeffs[0] = 1.0 / (2.0 * dt)
+
 	coeffs[0] = 2.0 / dt
 	if order == 1 {
 		coeffs[0] = 1.0 / dt
@@ -160,11 +164,10 @@ func main() {
 	}
 	defer A.Destroy()
 
-	startTime := 0.0
-	endTime := 0.002
-	timestep := 1e-5
+	t := StartTime
+	endTime := EndTime
+	timestep := TimeStep
 	dt := timestep
-	t := startTime
 
 	currents := []float64{0.0}
 	voltages := []float64{0.0}
@@ -189,7 +192,6 @@ func main() {
 
 		A.Clear()
 
-		// Original MNA stamping
 		A.GetElement(1, 1).Real += G
 		A.GetElement(1, 2).Real += -G
 		A.GetElement(1, 3).Real += 1.0
@@ -201,6 +203,7 @@ func main() {
 		A.GetElement(3, 1).Real += 1.0
 
 		A.GetElement(4, 2).Real += 1.0
+		A.GetElement(4, 4).Real = -coeffs[0] * L
 
 		vin := Vpeak * math.Sin(2.0*math.Pi*freq*t)
 
@@ -211,8 +214,6 @@ func main() {
 
 		switch integrationMethod {
 		case TrapezoidalMethod:
-			A.GetElement(4, 4).Real = -coeffs[0] * L
-
 			if currentOrder == 1 {
 				b[4] = -coeffs[0] * L * currents[len(currents)-1]
 			} else {
@@ -220,8 +221,6 @@ func main() {
 			}
 
 		default:
-			A.GetElement(4, 4).Real += -coeffs[0] * L
-
 			maxOrder := math.Min(float64(currentOrder), float64(len(currents)-1))
 			for j := 1; j <= int(maxOrder); j++ {
 				b[4] += coeffs[j] * currents[len(currents)-j]
