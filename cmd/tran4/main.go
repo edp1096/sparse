@@ -1,11 +1,8 @@
-/*
-Simple RL Circuit with LTE
-*/
-
 package main
 
 import (
 	"fmt"
+	"log"
 	"math"
 
 	"github.com/edp1096/sparse"
@@ -24,17 +21,15 @@ type BackwardDifferentialFormula struct {
 }
 
 const (
-	R     = 100.0
-	L     = 1e-3
-	Vpeak = 5.0
-	freq  = 1000.0
-	G     = 1.0 / R
-
-	tstop    = 0.002
-	timestep = 1e-5
+	R     = 100.0   // Resistor: 100 ohm
+	G     = 1.0 / R // Conductance
+	L     = 1e-3    // Inductor: 1mH
+	Vpeak = 5.0     // Peak voltage: 5V
+	freq  = 1000.0  // Frequency: 1kHz
 
 	targetLTE    = 1e-6
 	minTimeStep  = 1e-9
+	maxStepSize  = 5e-5
 	safetyFactor = 0.9
 )
 
@@ -42,7 +37,6 @@ var (
 	integrationMethod = GearMethod // TrapezoidalMethod or GearMethod
 	methodOrder       = 6          // Trapezoidal: 1 or 2, Gear: 1 ~ 6
 
-	// BDF coefficients
 	BdfCoefficients = [6]BackwardDifferentialFormula{
 		{[]float64{1.0}, 1.0},                                                                                                // 1st order
 		{[]float64{4.0 / 3.0, -1.0 / 3.0}, 2.0 / 3.0},                                                                        // 2nd order
@@ -81,9 +75,9 @@ func GetTrapezoidalCoeffs(order int, dt float64) []float64 {
 	}
 
 	coeffs := make([]float64, 1)
-	coeffs[0] = 2.0 / dt
+	coeffs[0] = 1.0 / 2.0 * dt
 	if order == 1 {
-		coeffs[0] = 1.0 / dt // Backward Euler
+		coeffs[0] = 1.0 / dt
 	}
 
 	return coeffs
@@ -142,7 +136,7 @@ func calculateNewTimeStep(currentStep, lte float64, order int, timestep float64)
 	return newStep
 }
 
-func checkMethodOrder() {
+func main() {
 	if integrationMethod == TrapezoidalMethod && methodOrder > 2 {
 		fmt.Println("Trapezoidal method order must be 1 or 2. Run as 2")
 		methodOrder = 2
@@ -151,154 +145,140 @@ func checkMethodOrder() {
 		fmt.Println("BDF/Gear method order must be 1 ~ 6. Run as 6")
 		methodOrder = 6
 	}
-}
-
-func main() {
-	checkMethodOrder()
 
 	config := &sparse.Configuration{
 		Real:          true,
 		Complex:       false,
-		ModifiedNodal: true,
+		Expandable:    true,
 		Translate:     true,
+		ModifiedNodal: true,
 	}
 
-	t := 0.0
-	dt := timestep
-	timePoints := []float64{t}
+	A, err := sparse.Create(4, config)
+	if err != nil {
+		panic(fmt.Sprintf("Failed to create matrix: %v", err))
+	}
+	defer A.Destroy()
+
+	startTime := 0.0
+	endTime := 0.002
+	dt := 1e-5
+	t := startTime
+
 	currents := []float64{0.0}
 	voltages := []float64{0.0}
+	vL := make([]float64, 0)
+
+	b := make([]float64, A.Size+1)
+	lte := 0.0
 
 	currentMethod := map[IntegrationMethod]string{GearMethod: "Gear/BDF", TrapezoidalMethod: "Trapezoidal"}[integrationMethod]
 	fmt.Printf("Integration Method: %s (Order %d)\n\n", currentMethod, methodOrder)
 
-	fmt.Printf("\n%8s | %12s | %12s | %10s | %5s | %6s\n", "Time (s)", "iL (A)", "vL (V)", "Step (s)", "Order", "LTE")
-	fmt.Println("--------------------------------------------------------------------------")
+	fmt.Printf("Time (s) | Vin | V(1) | V(2) | I_source | I_L | dt | Order | LTE\n")
+	fmt.Println("-------------------------------------------------------------------------")
 
-	A, err := sparse.Create(4, config)
-	if err != nil {
-		panic(err)
-	}
-	defer A.Destroy()
-
-	// DC Operating point
-	b := make([]float64, A.Size+1)
-	A.Clear()
-
-	A.GetElement(1, 1).Real += G
-	A.GetElement(1, 3).Real += 1.0
-	A.GetElement(2, 3).Real += 1.0
-	A.GetElement(2, 4).Real += 1.0
-	A.GetElement(3, 2).Real += 1.0
-	A.GetElement(4, 1).Real += -1.0
-	A.GetElement(4, 2).Real += 1.0
-
-	b[3] = Vpeak * math.Sin(2.0*math.Pi*freq*t)
-
-	A.MNAPreorder()
-	A.Factor()
-
-	x, err := A.Solve(b)
-	if err != nil {
-		panic(err)
-	}
-
-	currents[0] = x[3]
-	voltages[0] = x[2] - x[1]
-
-	fmt.Printf("%8.6f | %12.8f | %12.8f | %10.2e | %5d | %10.2e\n", t, currents[0], voltages[0], dt, 1, 0.0)
-
-	// Transient
-	currentOrder := 1
-	for t < tstop {
-		currentOrder = len(currents)
+	for t <= endTime {
+		currentOrder := len(currents)
 		if len(currents) > methodOrder {
 			currentOrder = methodOrder
 		}
 
 		coeffs := GetIntegratorCoeffs(currentOrder, dt)
 
-		tNext := t + dt
-		if tNext > tstop {
-			tNext = tstop
-		}
-
 		A.Clear()
 
+		// Original MNA stamping
 		A.GetElement(1, 1).Real += G
+		A.GetElement(1, 2).Real += -G
 		A.GetElement(1, 3).Real += 1.0
-		A.GetElement(2, 3).Real += 1.0
+
+		A.GetElement(2, 1).Real += -G
+		A.GetElement(2, 2).Real += G
 		A.GetElement(2, 4).Real += 1.0
-		A.GetElement(3, 2).Real += 1.0
-		A.GetElement(4, 1).Real += -1.0
+
+		A.GetElement(3, 1).Real += 1.0
+
 		A.GetElement(4, 2).Real += 1.0
-		A.GetElement(4, 3).Real += coeffs[0] * L
+
+		vin := Vpeak * math.Sin(2.0*math.Pi*freq*t)
 
 		b[1] = 0.0
 		b[2] = 0.0
-		b[3] = Vpeak * math.Sin(2.0*math.Pi*freq*tNext)
+		b[3] = vin
 		b[4] = 0.0
 
 		switch integrationMethod {
 		case TrapezoidalMethod:
-			if currentOrder == 1 {
-				b[4] = coeffs[0] * currents[len(currents)-1] * L // Backward Euler
-			} else {
-				b[4] = coeffs[0]*currents[len(currents)-1]*L - voltages[len(voltages)-1] // Trapezoidal
+			A.GetElement(4, 4).Real = -L / dt
+
+			b[4] += -coeffs[0] * currents[len(currents)-1] * L
+			if currentOrder > 1 && len(currents) >= 2 {
+				b[4] += -coeffs[0] * (currents[len(currents)-1] - currents[len(currents)-2])
 			}
+
 		default:
-			for j := 1; j <= currentOrder; j++ {
-				b[4] -= coeffs[j] * currents[len(currents)-j]
+			A.GetElement(4, 4).Real += -coeffs[0] * L
+
+			maxOrder := math.Min(float64(currentOrder), float64(len(currents)-1))
+			for j := 1; j <= int(maxOrder); j++ {
+				b[4] += coeffs[j] * currents[len(currents)-j]
 			}
 			b[4] *= L
 		}
 
-		A.MNAPreorder()
-		A.Factor()
-
-		x, err = A.Solve(b)
+		err = A.Factor()
 		if err != nil {
-			panic(err)
-		}
-
-		current := x[3]
-		voltage := x[2] - x[1]
-
-		// Error control
-		lte := calculateLTE(currents, dt, currentOrder)
-		if lte > targetLTE && len(currents) >= currentOrder+1 {
-			dt = calculateNewTimeStep(dt, lte, currentOrder, timestep)
+			fmt.Printf("Time %.6f: Factorization failed - %v\n", t, err)
 			continue
 		}
 
-		t = tNext
-		timePoints = append(timePoints, t)
-		currents = append(currents, current)
-		voltages = append(voltages, voltage)
+		x, err := A.Solve(b)
+		if err != nil {
+			fmt.Printf("Time %.6f: Solve failed - %v\n", t, err)
+			continue
+		}
 
-		dt = calculateNewTimeStep(dt, lte, currentOrder, timestep)
+		if currentOrder > 1 {
+			lte = calculateLTE(currents, dt, currentOrder)
+			if lte > targetLTE && len(currents) >= currentOrder+1 {
+				log.Println("WTF", currentOrder)
+				dt = calculateNewTimeStep(dt, lte, currentOrder, dt)
+				continue
+			}
+		}
 
-		if len(timePoints)%10 == 0 || t == tstop {
-			fmt.Printf("%8.6f | %12.8f | %12.8f | %10.2e | %5d | %10.2e\n", t, current, voltage, dt, currentOrder, lte)
+		currents = append(currents, x[4])
+		voltages = append(voltages, x[2]-x[1])
+		vL = append(vL, x[2])
+
+		fmt.Printf("%.6f | %.5f | %.5f | %.5f | %.5f | %.5f | %.2e | %d | %.2e\n", t, vin, x[1], x[2], x[3], x[4], dt, currentOrder, lte)
+
+		tPrev := t
+		t += dt
+		dt = calculateNewTimeStep(dt, lte, currentOrder, dt)
+		if t > endTime && tPrev < endTime {
+			t = endTime
+			dt = t - tPrev
 		}
 	}
 
-	// Results compare with thorytical max voltage
 	maxVL := 0.0
-	for _, v := range voltages {
+	for _, v := range vL {
 		if math.Abs(v) > maxVL {
 			maxVL = math.Abs(v)
 		}
 	}
-
 	maxDiDt := Vpeak * 2 * math.Pi * freq / math.Sqrt(R*R+math.Pow(2*math.Pi*freq*L, 2))
 	theoryMaxVL := L * maxDiDt
 
-	fmt.Println("\nResults Summary:")
-	fmt.Printf("Theoretical max VL: %.6f V\n", theoryMaxVL)
-	fmt.Printf("Computed max VL: %.6f V\n", maxVL)
-	errPct := 100 * math.Abs(maxVL-theoryMaxVL) / theoryMaxVL
-	fmt.Printf("Error: %.6f%%\n", errPct)
-	fmt.Printf("Final timestep: %.8e s\n", dt)
-	fmt.Printf("Final order: %d\n", currentOrder)
+	fmt.Println("\nCircuit Parameters:")
+	fmt.Printf("R: %.0f Ohm\n", R)
+	fmt.Printf("L: %.0f mH\n", L*1e3)
+	fmt.Printf("Vpeak: %.1f V\n", Vpeak)
+	fmt.Printf("Frequency: %.0f Hz\n", freq)
+	fmt.Printf("Time constant (L/R): %.3f ms\n", (L/R)*1000)
+	fmt.Printf("Theory max VL: %.6f V\n", theoryMaxVL)
+	fmt.Printf("Max VL: %.6f V\n", maxVL)
+	fmt.Printf("Err: %.6f%%\n", 100*math.Abs(maxVL-theoryMaxVL)/theoryMaxVL)
 }
