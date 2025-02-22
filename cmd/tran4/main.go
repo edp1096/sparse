@@ -183,11 +183,7 @@ func main() {
 	fmt.Println("-------------------------------------------------------------------------")
 
 	for t <= endTime {
-		currentOrder := len(currents)
-		if len(currents) > methodOrder {
-			currentOrder = methodOrder
-		}
-
+		currentOrder := min(len(currents), methodOrder)
 		coeffs := GetIntegratorCoeffs(currentOrder, dt)
 
 		A.Clear()
