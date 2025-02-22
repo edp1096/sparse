@@ -26,10 +26,10 @@ const (
 	Vpeak = 5.0     // Peak voltage: 5V
 	freq  = 1000.0  // Frequency: 1kHz
 
-	targetLTE    = 1e-6
-	minTimeStep  = 1e-9
-	maxStepSize  = 5e-5
-	safetyFactor = 0.9
+	RelTol      = 1e-6
+	TrTol       = 7.0
+	minTimeStep = 1e-9
+	maxStepSize = 5e-5
 
 	StartTime = 0.0
 	EndTime   = 0.002
@@ -50,9 +50,7 @@ var (
 	}
 
 	LteTrapCoeffs = []float64{0.5, 1.0 / 12.0}
-	LteBdfCoeffs  = []float64{0.5, 2.0 / 3.0, 6.0 / 11.0, 12.0 / 25.0, 60.0 / 137.0, 60.0 / 147.0}
-
-	StabilityFactors = []float64{2.00, 2.00, 1.98, 1.92, 1.76, 1.56} // stability factor
+	LteBdfCoeffs  = []float64{0.5, 0.2222222222, 0.1363636364, 0.096, 0.07299270073, 0.05830903790}
 )
 
 func GetBDFcoeffs(order int, dt float64) []float64 {
@@ -107,7 +105,7 @@ func calculateLTE(values []float64, dt float64, order int) float64 {
 	der[0] = values[n-1]
 
 	for i := 1; i <= order; i++ {
-		for j := 0; j < len(der)-i; j++ {
+		for j := range len(der) - i {
 			der[j] = (der[j] - der[j+1]) / dt
 		}
 	}
@@ -128,13 +126,18 @@ func calculateNewTimeStep(currentStep, lte float64, order int, timestep float64)
 		return currentStep
 	}
 
-	factor := math.Pow(targetLTE/lte, 1.0/float64(order+1)) * safetyFactor
-	factor = math.Max(0.1, math.Min(factor, 10.0))
+	tol := math.Max(currentStep*lte*RelTol, minTimeStep)
+	del := TrTol * tol / lte
 
-	newStep := currentStep * factor
-	maxStep := StabilityFactors[order-1] * timestep
+	switch {
+	case order == 2:
+		del = math.Sqrt(del)
+	case order > 2:
+		del = math.Exp(math.Log(del) / float64(order))
+	}
 
-	newStep = math.Min(newStep, maxStep)
+	newStep := math.Min(currentStep, del)
+	newStep = math.Min(newStep, maxStepSize)
 	newStep = math.Max(newStep, minTimeStep)
 
 	return newStep
@@ -238,7 +241,7 @@ func main() {
 
 		if currentOrder > 1 {
 			lte = calculateLTE(currents, dt, currentOrder)
-			if lte > targetLTE && len(currents) >= currentOrder+1 {
+			if lte > RelTol && len(currents) >= currentOrder+1 {
 				dt = calculateNewTimeStep(dt, lte, currentOrder, timestep)
 				continue
 			}
