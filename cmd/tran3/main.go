@@ -45,16 +45,18 @@ func main() {
 	for t := startTime; t <= endTime; t += timeStep {
 		A.Clear()
 
+		// Resistor
 		A.GetElement(1, 1).Real += G
-		A.GetElement(1, 2).Real += -G
-		A.GetElement(1, 3).Real += 1.0
-
-		A.GetElement(2, 1).Real += -G
 		A.GetElement(2, 2).Real += G
-		A.GetElement(2, 4).Real += 1.0
+		A.GetElement(1, 2).Real += -G
+		A.GetElement(2, 1).Real += -G
 
+		// Voltage source
+		A.GetElement(1, 3).Real += 1.0
 		A.GetElement(3, 1).Real += 1.0
 
+		// Inductor
+		A.GetElement(2, 4).Real += 1.0
 		A.GetElement(4, 2).Real += 1.0
 		A.GetElement(4, 4).Real += -L / timeStep
 

@@ -216,10 +216,11 @@ func main() {
 		switch integrationMethod {
 		case TrapezoidalMethod:
 			if currentOrder == 1 {
-				b[4] = -coeffs[0] * L * currents[len(currents)-1]
+				b[4] += -coeffs[0] * currents[len(currents)-1]
 			} else {
-				b[4] = -coeffs[0]*L*(currents[len(currents)-1]) - voltages[len(voltages)-1]
+				b[4] += -coeffs[0]*(currents[len(currents)-1]) - voltages[len(voltages)-1]
 			}
+			b[4] *= L
 
 		default:
 			maxOrder := math.Min(float64(currentOrder), float64(len(currents)-1))
