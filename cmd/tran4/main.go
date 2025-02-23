@@ -28,8 +28,8 @@ const (
 
 	RelTol      = 1e-6
 	TrTol       = 7.0
-	minTimeStep = 1e-9
-	maxStepSize = 5e-5
+	MinTimeStep = 1e-9
+	MaxStepSize = 5e-5
 
 	StartTime = 0.0
 	EndTime   = 0.002
@@ -121,12 +121,12 @@ func calculateLTE(values []float64, dt float64, order int) float64 {
 	return math.Abs(lteCoeff * math.Pow(dt, float64(order+1)) * der[0])
 }
 
-func calculateNewTimeStep(currentStep, lte float64, order int, timestep float64) float64 {
+func calculateNewTimeStep(currentStep, lte float64, order int) float64 {
 	if lte < 1e-15 {
 		return currentStep
 	}
 
-	tol := math.Max(currentStep*lte*RelTol, minTimeStep)
+	tol := math.Max(currentStep*lte*RelTol, MinTimeStep)
 	del := TrTol * tol / lte
 
 	switch {
@@ -137,8 +137,8 @@ func calculateNewTimeStep(currentStep, lte float64, order int, timestep float64)
 	}
 
 	newStep := math.Min(currentStep, del)
-	newStep = math.Min(newStep, maxStepSize)
-	newStep = math.Max(newStep, minTimeStep)
+	newStep = math.Min(newStep, MaxStepSize)
+	newStep = math.Max(newStep, MinTimeStep)
 
 	return newStep
 }
@@ -191,16 +191,18 @@ func main() {
 
 		A.Clear()
 
+		// Resistor
 		A.GetElement(1, 1).Real += G
-		A.GetElement(1, 2).Real += -G
-		A.GetElement(1, 3).Real += 1.0
-
-		A.GetElement(2, 1).Real += -G
 		A.GetElement(2, 2).Real += G
-		A.GetElement(2, 4).Real += 1.0
+		A.GetElement(1, 2).Real += -G
+		A.GetElement(2, 1).Real += -G
 
+		// Voltage source
+		A.GetElement(1, 3).Real += 1.0
 		A.GetElement(3, 1).Real += 1.0
 
+		// Inductor
+		A.GetElement(2, 4).Real += 1.0
 		A.GetElement(4, 2).Real += 1.0
 		A.GetElement(4, 4).Real = -coeffs[0] * L
 
@@ -240,9 +242,11 @@ func main() {
 		}
 
 		if currentOrder > 1 {
-			lte = calculateLTE(currents, dt, currentOrder)
+			lteCurrent := calculateLTE(currents, dt, currentOrder)
+			lteVoltage := calculateLTE(voltages, dt, currentOrder)
+			lte = math.Max(lteCurrent, lteVoltage)
 			if lte > RelTol && len(currents) >= currentOrder+1 {
-				dt = calculateNewTimeStep(dt, lte, currentOrder, timestep)
+				dt = calculateNewTimeStep(dt, lte, currentOrder)
 				continue
 			}
 		}
@@ -256,7 +260,7 @@ func main() {
 		tPrev := t
 		dtPrev := dt
 		t += dt
-		dt = calculateNewTimeStep(dt, lte, currentOrder, timestep)
+		dt = calculateNewTimeStep(dt, lte, currentOrder)
 		if t > endTime && tPrev < endTime {
 			t = endTime
 			dt = dtPrev
