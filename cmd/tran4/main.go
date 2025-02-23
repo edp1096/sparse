@@ -204,7 +204,7 @@ func main() {
 		// Inductor
 		A.GetElement(2, 4).Real += 1.0
 		A.GetElement(4, 2).Real += 1.0
-		A.GetElement(4, 4).Real = -coeffs[0] * L
+		A.GetElement(4, 4).Real += -coeffs[0] * L
 
 		vin := Vpeak * math.Sin(2.0*math.Pi*freq*t)
 
